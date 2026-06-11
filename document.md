@@ -24,13 +24,14 @@ research behind product decisions. Companion to `decision.md` (the reasoning log
 - **1.7** Stub `/details` and `/summary` pages so the folder structure exists.
 - **Verify:** upload on `/`, land on `/session`, hit play, timestamp ticks; scrub works.
 
-### Phase 2 — Persona reaction generation (AI core)
-- **2.1** `lib/personas.ts` — 5 richly-defined personas (real archetypes, distinct voices).
-- **2.2** `lib/claude.ts` — Anthropic client via `@ai-sdk/anthropic`.
-- **2.3** `app/api/reactions/route.ts` — POST: track metadata in → JSON timeline out.
-- **2.4** Prompt: 12–18 reactions across full duration, JSON-only.
-- **2.5** Safe parse + validate (zod); retry once on failure; clear error otherwise.
-- **Verify:** submit track info → clean in-character JSON timeline.
+### Phase 2 — Persona reaction generation (AI core) ✅
+- **2.1** `lib/personas.ts` — 5 richly-defined personas (real archetypes, distinct voices + platform disposition for D9). ✅
+- **2.2** `lib/claude.ts` — model + system/prompt builder via `@ai-sdk/anthropic`; `lib/reactions.ts` — zod schemas. ✅
+- **2.3** `app/api/reactions/route.ts` — POST: track metadata in → JSON timeline out (`generateObject`). ✅
+- **2.4** Prompt: 12–18 reactions across full duration, reacting to hook/drop/bridge/outro. ✅
+- **2.5** Schema-validated; retry once on `NoObjectGeneratedError`; clean/clamp/sort; clear errors. ✅
+- **2.6** Flow wired: `/` → `/details` (metadata form, auto-detected duration) → POST → store in context → `/session`. ✅
+- **Verify:** ✅ submit track info → clean in-character JSON timeline; error paths return 400/500/502 with clear messages.
 
 ### Phase 3 — Sync reactions to playback (wow moment)
 - **3.1** Sorted-by-time reaction list + a pointer; each rAF tick release reactions where `time <= currentTime`.

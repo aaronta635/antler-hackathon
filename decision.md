@@ -80,4 +80,29 @@ Companion to `document.md` (the step plan + strategy research).
 - **Why:** The layout stays mounted across client-side route changes, so state + the object URL
   survive navigation. No new dependency (vs Zustand).
 
+## D13 — Demo song: recognizable indie / crossover track
+- **Decision:** Demo with a recognizable indie/crossover song (not a mainstream megastar,
+  not fully obscure). Needs clear structural moments (hook/drop/bridge/outro) and ~2–3.5 min length.
+- **Why:** Balances credibility (judges have a vibe to sanity-check reactions against) with the
+  "help indie artists" pitch. Avoids the megastar pitfall: Claude generates from *metadata* (not
+  audio), so a famous song would be a memory-assisted "cheat" and contradicts the use case.
+- **Caveat:** Still copyrighted commercial music — fine for a local live demo; mind it only if the
+  pitch is recorded/posted publicly.
+
+## D14 — AI stack: Vercel AI SDK + generateObject, model claude-opus-4-8
+- **Decision:** Generate reactions with `@ai-sdk/anthropic` (per spec) using `generateObject` +
+  a zod schema (`ai` v6, `maxOutputTokens`). Model = `claude-opus-4-8` (one-line constant in
+  `lib/claude.ts`, trivially swappable to `claude-sonnet-4-6`).
+- **Why generateObject over manual parse:** schema-enforced JSON is the most bulletproof way to
+  honor "never let a failed parse crash the demo." We still wrap it: retry once on
+  `NoObjectGeneratedError`, clean/clamp/sort rows, clear errors with proper status codes.
+- **Why Opus 4.8:** persona quality is the product's core wow; verified output is excellent and
+  fast enough behind a "Gathering the room…" state. **Open feature decision:** Opus (quality) vs
+  Sonnet 4.6 (faster/cheaper) for the live demo — pricing Opus $5/$25 vs Sonnet $3/$15 per 1M.
+- **No `temperature`/`top_p`:** Opus 4.8 rejects them; the AI SDK omits them by default.
+
+## D15 — API validation order: input before server-key check
+- **Decision:** `/api/reactions` validates the user's track metadata (400) *before* checking for
+  `ANTHROPIC_API_KEY` (500). Input errors are the user's to fix regardless of server config.
+
 (See `document.md` PART B for the research behind these.)

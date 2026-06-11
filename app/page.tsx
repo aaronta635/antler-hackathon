@@ -10,11 +10,11 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Play the file client-side; store it in context, then move to the session page.
+  // Play the file client-side; store it in context, then go enter track details.
   function accept(file: File | undefined) {
     if (!file || !file.type.startsWith("audio/")) return;
     loadTrack(file);
-    router.push("/session");
+    router.push("/details");
   }
 
   return (
