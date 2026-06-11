@@ -135,4 +135,14 @@ Companion to `document.md` (the step plan + strategy research).
 - **Security model:** server writes via service-role key (bypasses RLS); RLS guards reads/share-links
   and user-owned audiences. Secrets only in gitignored `.env.local`; schema in `supabase/schema.sql`.
 
+## D20 — Tone rebalance, vocals, short-clip handling, dashboard summary
+- **Tone:** dialed criticality back (defaults softened; `toneInstruction` now targets a realistic
+  MIX of praise + critique, scaled by the brutality dial) — the room was too harsh.
+- **Vocals:** prompt now assumes a lead vocal/lyrics unless the vibe says instrumental.
+- **Short clips:** tracks under 90s are treated as snippets/demo excerpts — fewer reactions, no
+  full-song-structure assumptions (kills "outro already?").
+- **Summary → scorecard dashboard:** replaced the prose verdict with numbers/visuals (D9-safe — no
+  fake viral %): room score /100, sentiment split (sums to room size), best/drop-off timestamps,
+  "X/N would share", per-listener verdict dots. Short notes only.
+
 (See `document.md` PART B for the research behind these.)

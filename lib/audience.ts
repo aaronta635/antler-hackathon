@@ -107,7 +107,7 @@ export const DEFAULT_LISTENERS: Listener[] = [
     age: 31,
     knowledge: "producer",
     genres: ["Hip-Hop", "Drill", "R&B"],
-    criticality: "harsh",
+    criticality: "picky",
     location: "Atlanta, GA",
     background: "Works A&R-adjacent at an indie label, makes beats. Trained ear for arrangement and mix.",
     discovers: "SoundCloud reposts and producer Discords",
@@ -124,7 +124,7 @@ export const DEFAULT_LISTENERS: Listener[] = [
     age: 19,
     knowledge: "superfan",
     genres: ["K-pop", "Pop", "Hyperpop"],
-    criticality: "balanced",
+    criticality: "supportive",
     location: "Toronto, ON",
     background: "Comp-sci student, full-time stan. Runs a fan account, makes fancams.",
     discovers: "TikTok and stan Twitter quote-tweets",
@@ -141,7 +141,7 @@ export const DEFAULT_LISTENERS: Listener[] = [
     age: 47,
     knowledge: "critic",
     genres: ["Indie/Alt", "Rock", "Folk"],
-    criticality: "harsh",
+    criticality: "picky",
     location: "Austin, TX",
     background: "Vinyl collector, ex-college-radio DJ. Two decades of liner notes. Suspicious of anything frictionless.",
     discovers: "Bandcamp deep-dives and the record store's staff picks",
@@ -200,12 +200,21 @@ export function listenersPromptBlock(listeners: Listener[]): string {
     .join("\n\n");
 }
 
-/** The "be honest / be harder to impress" instruction, scaled by the brutality dial. */
+/** The room-tone instruction, scaled by the brutality dial. Aims for a realistic MIX. */
 export function toneInstruction(brutality: BrutalityId): string {
   const b = BRUTALITY.find((x) => x.id === brutality) ?? BRUTALITY[1];
-  return `ROOM TONE: ${b.label} — ${b.desc}. On top of that, honor each listener's own criticality level shown above.
 
-This room is HARD TO IMPRESS. Praise must be earned, not given. Call out clichés, derivative writing, weak or predictable hooks, muddy mixing, filler sections, and anything that sounds like everything else. Lukewarm and outright negative reactions are expected and valuable — most tracks are not great. Never write generic, exchangeable praise. If the room isn't won over, say so plainly.`;
+  // The mix of praise vs. critique shifts with the dial; honest is the balanced default.
+  const balance =
+    brutality === "gentle"
+      ? "Lean encouraging — mostly genuine praise, with the occasional gentle critique."
+      : brutality === "savage"
+        ? "Lean harsh — quick to roast, praise is rare and has to be truly earned."
+        : "Aim for a realistic spread — some genuine love, some mixed, some critical. Not everyone agrees.";
+
+  return `ROOM TONE: ${b.label} — ${b.desc}. ${balance} Also honor each listener's own criticality level shown above.
+
+These listeners are honest, not mean. Give specific, enthusiastic praise when a moment genuinely earns it — real excitement is valuable. Be critical when something is weak (clichés, a predictable hook, muddy mix, filler), but do NOT pile on negativity by default. Every reaction must be specific to THIS track — never generic, exchangeable praise or hate.`;
 }
 
 /** Default starting room: all 5 defaults, honest tone. */

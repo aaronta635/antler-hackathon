@@ -23,7 +23,7 @@ async function generateSummary(meta: TrackMeta, room: Room, reactions: Reaction[
     model: MODEL,
     schema: summarySchema,
     system: summarySystem(room),
-    prompt: summaryPrompt(meta, reactions),
+    prompt: summaryPrompt(meta, room, reactions),
     maxOutputTokens: 1200,
   });
   return object;

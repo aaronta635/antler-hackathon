@@ -28,23 +28,38 @@ ${toneInstruction(room.brutality)}`;
 
 export function reactionsPrompt(meta: TrackMeta, room: Room): string {
   const names = room.listeners.map((l) => l.name).join(", ");
-  const target = Math.min(18, Math.max(10, room.listeners.length * 3));
+  const dur = Math.round(meta.duration);
+  const short = dur < 90; // a clip / demo excerpt, not a full song
+
+  const target = short
+    ? Math.min(10, Math.max(4, Math.round(dur / 7)))
+    : Math.min(18, Math.max(10, room.listeners.length * 3));
+
+  const coverage = short
+    ? `- Spread reactions across the full ${dur}s. Not every listener needs to appear twice — keep it natural for a clip this short.`
+    : `- Spread reactions across the FULL duration (0 to ${dur}s). Do not bunch them at the start. Every listener should appear at least twice.`;
+
+  const structure = short
+    ? `- This is a SHORT CLIP (${dur}s) — treat it as a snippet or demo excerpt, NOT a full song. Do NOT expect or mention a full song structure, and never say things like "outro already?" or reference a bridge/final chorus a clip this short wouldn't have. React to first impressions, the hook, the energy, the sound.`
+    : `- React to imagined structural moments across the song: the intro, the first hook, a drop or beat switch, the bridge, the final chorus, the outro.`;
+
   return `A track is about to play. Here is what its creator told us:
 
 - Title: ${meta.title}
 - Genre: ${meta.genre}
 - Vibe / description: ${meta.vibe}
-- Total duration: ${Math.round(meta.duration)} seconds
+- Total duration: ${dur} seconds
 
 Generate a timeline of about ${target} reactions, as if these people were listening together and reacting in the moment.
 
 Rules:
-- Spread reactions across the FULL duration (0 to ${Math.round(meta.duration)}s). Do not bunch them at the start.
-- React to imagined structural moments: the intro, the first hook, a drop or beat switch, the bridge, the final chorus, the outro.
-- Every listener should appear at least twice. Let their takes diverge — someone can love a moment another dislikes.
+${coverage}
+${structure}
+- Assume the track has a lead VOCAL and lyrics (a topline / singer / rapper) UNLESS the vibe explicitly says it's instrumental. React to the vocal too — delivery, melody, lyrics, how it sits — not only the production.
+- Let their takes diverge — someone can love a moment another dislikes.
 - Each "reaction" is ONE short line (usually under 120 characters) in that persona's exact writing voice.
 - "persona" must be EXACTLY one of these names: ${names}.
-- "time" is the second within the track the reaction lands on.`;
+- "time" is the second within the track the reaction lands on (0 to ${dur}).`;
 }
 
 // --- Phase 4: end-of-song verdict ------------------------------------------
@@ -59,22 +74,28 @@ ${toneInstruction(room.brutality)}
 Voice: blunt, specific, opinionated. Reference the actual moments and what specific people said.`;
 }
 
-export function summaryPrompt(meta: TrackMeta, reactions: Reaction[]): string {
+export function summaryPrompt(meta: TrackMeta, room: Room, reactions: Reaction[]): string {
   const timeline = reactions
     .map((r) => `[${Math.round(r.time)}s] ${r.persona}: ${r.reaction}`)
     .join("\n");
+  const names = room.listeners.map((l) => l.name).join(", ");
+  const n = room.listeners.length;
 
   return `Track: "${meta.title}" — ${meta.genre} — ${Math.round(meta.duration)}s.
 Vibe the creator described: ${meta.vibe}
 
-Here is everything the room said, in order:
+The ${n} listeners: ${names}.
+Everything they said, in order:
 ${timeline}
 
-Write the verdict:
-- verdict: ONE blunt sentence capturing the room's overall take (the honest headline).
-- bestMoment: the single moment that landed hardest — the second it happens and why, citing what people said.
-- dropOff: the biggest risk — where listeners cooled off or would tune out — the second and why.
-- share: of the listeners, who is most likely to actually share this, on what platform, and the exact clip or reason they'd post it.
+Produce a tight SCORECARD — this renders as a dashboard, so keep every field extremely short:
+- headline: ONE punchy sentence — the room's overall take.
+- score: 0–100, the room's honest overall rating (a mixed room is ~50–65; only a genuinely loved track clears 80).
+- sentiment: how many of the ${n} listeners loved it / were mixed / passed. These three numbers MUST sum to exactly ${n}.
+- bestMoment: the strongest moment — its second + a note of AT MOST 8 words.
+- dropOff: the weakest / most at-risk moment — its second + a note of AT MOST 8 words.
+- share: how many of the ${n} would actually share it, the single most likely sharer, and the platform.
+- listeners: exactly one entry per listener (${names}) — verdict (loved | mixed | passed) + a note of AT MOST 6 words.
 
-Ground every field in the real reactions above. Use the listeners' names. Be specific about timestamps.`;
+Ground every field in the reactions above. Be honest, not generous. Notes must be tiny.`;
 }
