@@ -25,10 +25,31 @@ export default function SummaryPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!summary);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!meta || !reactions || !room) router.replace("/");
   }, [meta, reactions, room, router]);
+
+  // Persist the finished session once (best-effort; no-op if Supabase is off).
+  const persisted = useRef(false);
+  useEffect(() => {
+    if (!summary || persisted.current || !meta || !room || !reactions) return;
+    persisted.current = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meta, room, reactions, summary }),
+        });
+        const data = await res.json();
+        if (data?.id) setSessionId(data.id);
+      } catch {
+        /* persistence is optional */
+      }
+    })();
+  }, [summary, meta, room, reactions]);
 
   const requested = useRef(false);
   useEffect(() => {
@@ -68,10 +89,80 @@ export default function SummaryPage() {
         {loading && !summary && <VerdictLoading />}
         {error && !summary && <VerdictError message={error} onRetry={() => router.refresh()} />}
         {summary && (
-          <Dashboard summary={summary} room={room} title={meta.title} onReplay={() => router.push("/")} />
+          <div className="flex flex-col gap-6">
+            <Dashboard summary={summary} room={room} title={meta.title} onReplay={() => router.push("/")} />
+            {sessionId && <Feedback sessionId={sessionId} />}
+          </div>
         )}
       </div>
     </main>
+  );
+}
+
+const FEELINGS: [string, string][] = [
+  ["loved", "🔥"],
+  ["useful", "🙂"],
+  ["meh", "😐"],
+  ["off", "👎"],
+];
+
+function Feedback({ sessionId }: { sessionId: string }) {
+  const [feeling, setFeeling] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function submit() {
+    if (!feeling && !comment.trim()) return;
+    setBusy(true);
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, feeling: feeling ?? undefined, comment: comment.trim() || undefined }),
+      });
+      setSent(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (sent) return <p className="text-center text-sm text-muted">Thanks for the feedback ✦</p>;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-stone-800 bg-surface/40 p-5">
+      <p className="text-sm font-medium text-foreground">Was this useful?</p>
+      <div className="flex gap-2">
+        {FEELINGS.map(([id, emoji]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setFeeling(id)}
+            className={`flex-1 rounded-xl border px-2 py-2 text-center transition-colors ${
+              feeling === id ? "border-accent bg-accent/10" : "border-stone-700 hover:border-stone-500"
+            }`}
+          >
+            <span className="text-lg">{emoji}</span>
+            <span className="block text-[11px] capitalize text-muted">{id}</span>
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="Anything else? (optional)"
+        rows={2}
+        className="resize-none rounded-lg border border-stone-700 bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        disabled={busy || (!feeling && !comment.trim())}
+        className="self-end rounded-full bg-accent px-5 py-2 text-sm font-medium text-background disabled:opacity-40"
+      >
+        {busy ? "Sending…" : "Send feedback"}
+      </button>
+    </div>
   );
 }
 

@@ -145,4 +145,17 @@ Companion to `document.md` (the step plan + strategy research).
   fake viral %): room score /100, sentiment split (sums to room size), best/drop-off timestamps,
   "X/N would share", per-listener verdict dots. Short notes only.
 
+## D21 — Part B: Supabase auth, homescreen, persistence, feedback
+- **Supabase clients:** `lib/supabase/{client,server,admin}.ts` (browser anon / server-with-cookies /
+  service-role) + `middleware.ts` to refresh the session.
+- **Auth:** magic-link sign-in capturing name + email on the new homescreen; `/auth/callback` exchanges
+  the code. Optional (anonymous use still works).
+- **Homescreen:** `/` redesigned as a crafted dark/amber landing (equalizer motif, not generic-AI) with
+  the short name+email login; upload moved to `/upload`. Flow: `/` → `/upload` → `/details` → `/audience`
+  → `/session` → `/summary`.
+- **Persistence:** `/api/session` saves each finished session via the service-role client; best-effort
+  (returns `{skipped}` if Supabase is off, so the demo never breaks). Verified writing a real row.
+- **Feedback:** `/api/feedback` + a feeling (🔥/🙂/😐/👎) + comment widget on the scorecard.
+- **Deferred:** public share links (`/s/[id]`) — lowest-priority growth piece, next.
+
 (See `document.md` PART B for the research behind these.)
