@@ -26,3 +26,19 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Reactions fade + slide up as they stream into the feed (Phase 3). */
+@keyframes reaction-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reaction-in {
+  animation: reaction-in 0.35s ease-out both;
+}

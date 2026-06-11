@@ -33,12 +33,13 @@ research behind product decisions. Companion to `decision.md` (the reasoning log
 - **2.6** Flow wired: `/` → `/details` (metadata form, auto-detected duration) → POST → store in context → `/session`. ✅
 - **Verify:** ✅ submit track info → clean in-character JSON timeline; error paths return 400/500/502 with clear messages.
 
-### Phase 3 — Sync reactions to playback (wow moment)
-- **3.1** Sorted-by-time reaction list + a pointer; each rAF tick release reactions where `time <= currentTime`.
-- **3.2** Feed UI: persona avatar (initials + color) + text, newest at bottom, auto-scroll.
-- **3.3** Fade/slide-in animation.
-- **3.4** Handle seek/pause cleanly (reset pointer on backward seek).
-- **Verify:** play → reactions stream in on time, feels like a live room.
+### Phase 3 — Sync reactions to playback (wow moment) ✅
+- **3.1** rAF loop reveals every reaction with `time <= currentTime` (recomputed from 0 each frame → seek/rewind correct). ✅
+- **3.2** Feed UI: persona avatar (initials + color) + text + timestamp, newest at bottom, auto-scroll. ✅
+- **3.3** Fade/slide-in animation (`reaction-in` keyframe; only newly-revealed items animate). ✅
+- **3.4** Seek/pause handled: `syncReactions` runs in the loop and on seek (even while paused). ✅
+- **Bonus:** server logs the full timeline to the terminal on generation.
+- **Verify (browser pending):** play → reactions stream in on time; compiles, routes 200, terminal log confirmed.
 
 ### Phase 4 — End-of-song summary (only if 1–3 solid)
 - **4.1** `app/api/summary/route.ts` — second Claude call over full timeline.

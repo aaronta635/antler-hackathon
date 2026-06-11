@@ -4,49 +4,76 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { formatTime } from "@/lib/format";
+import { personaByName } from "@/lib/personas";
 
 export default function SessionPage() {
   const router = useRouter();
-  const { fileUrl, fileName } = useSession();
+  const { fileUrl, fileName, reactions } = useSession();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const feedRef = useRef<HTMLDivElement | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  // How many reactions (sorted by time) have been revealed so far.
+  const [shownCount, setShownCount] = useState(0);
 
-  // If someone lands here without a loaded track (e.g. refresh wipes context), go back.
+  // If someone lands here without a loaded track / timeline (e.g. refresh wiped
+  // the in-memory context), send them back to start.
   useEffect(() => {
     if (!fileUrl) router.replace("/");
   }, [fileUrl, router]);
 
-  // --- Timestamp tracking (decision D6: requestAnimationFrame) ---------------
-  // Read audio.currentTime every frame (~60x/sec) for precision (Phase 3 fires
-  // reactions off this), but throttle the *visible* clock to ~4x/sec so React
-  // isn't re-rendering 60 times a second.
+  // Keep the latest reactions + shown count in refs so the rAF loop (created once)
+  // always reads current values without being re-created.
+  const reactionsRef = useRef(reactions ?? []);
+  const shownCountRef = useRef(0);
+  useEffect(() => {
+    reactionsRef.current = reactions ?? [];
+  }, [reactions]);
+
+  // --- Reaction sync (Phase 3) ----------------------------------------------
+  // Reactions are sorted by time. The revealed set is simply every reaction whose
+  // time has passed. Recomputing from 0 each call means seeking BACKWARD correctly
+  // hides later reactions, and seeking forward reveals them — no stale pointer.
+  const syncReactions = useCallback((t: number) => {
+    const list = reactionsRef.current;
+    let count = 0;
+    while (count < list.length && list[count].time <= t) count++;
+    if (count !== shownCountRef.current) {
+      shownCountRef.current = count;
+      setShownCount(count);
+    }
+  }, []);
+
+  // --- Timestamp loop (decision D6: requestAnimationFrame) -------------------
+  // Reaction triggers are checked every frame (~60x/sec) so they land on time;
+  // the visible clock is throttled to ~4x/sec to avoid needless re-renders.
   const rafRef = useRef<number | null>(null);
   const lastDisplayRef = useRef(0);
 
   const startLoop = useCallback(() => {
-    if (rafRef.current != null) return; // already running
+    if (rafRef.current != null) return;
 
     const loop = () => {
       const audio = audioRef.current;
       if (!audio) return;
+      const t = audio.currentTime;
 
-      // (Phase 3 will check reactions against audio.currentTime here — every frame.)
+      syncReactions(t); // precise, every frame
 
       const now = performance.now();
       if (now - lastDisplayRef.current >= 250) {
         lastDisplayRef.current = now;
-        setCurrentTime(audio.currentTime);
+        setCurrentTime(t);
       }
       rafRef.current = requestAnimationFrame(loop);
     };
 
     rafRef.current = requestAnimationFrame(loop);
-  }, []);
+  }, [syncReactions]);
 
   const stopLoop = useCallback(() => {
     if (rafRef.current != null) {
@@ -56,6 +83,12 @@ export default function SessionPage() {
   }, []);
 
   useEffect(() => () => stopLoop(), [stopLoop]);
+
+  // Auto-scroll the feed to the newest reaction as they stream in.
+  useEffect(() => {
+    const el = feedRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [shownCount]);
 
   // --- Play / pause ----------------------------------------------------------
   const togglePlay = useCallback(async () => {
@@ -69,11 +102,11 @@ export default function SessionPage() {
       audio.pause();
       setIsPlaying(false);
       stopLoop();
-      setCurrentTime(audio.currentTime); // snap to the exact pause point
+      setCurrentTime(audio.currentTime);
     }
   }, [startLoop, stopLoop]);
 
-  // --- Seeking (decision D5: seekable progress bar) --------------------------
+  // --- Seeking (decision D5) -------------------------------------------------
   const seekRef = useRef(false);
 
   const applySeek = useCallback(
@@ -85,18 +118,20 @@ export default function SessionPage() {
       const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
       const t = ratio * duration;
       audio.currentTime = t;
-      setCurrentTime(t); // reflect immediately, even while paused
+      setCurrentTime(t);
+      syncReactions(t); // update the feed immediately, even while paused
     },
-    [duration],
+    [duration, syncReactions],
   );
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const shown = (reactions ?? []).slice(0, shownCount);
 
   if (!fileUrl) return null; // redirecting
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
-      <div className="w-full max-w-xl">
+    <main className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+      <div className="flex w-full max-w-xl flex-col gap-6">
         <audio
           ref={audioRef}
           src={fileUrl}
@@ -108,15 +143,12 @@ export default function SessionPage() {
           hidden
         />
 
-        <div className="flex flex-col gap-6 rounded-2xl border border-stone-800 bg-surface/60 p-8">
+        {/* Player */}
+        <div className="flex flex-col gap-6 rounded-2xl border border-stone-800 bg-surface/60 p-6">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="truncate text-lg font-medium text-foreground">
-                {fileName}
-              </p>
-              <p className="text-sm text-muted">
-                {isPlaying ? "Playing" : "Paused"}
-              </p>
+              <p className="truncate text-lg font-medium text-foreground">{fileName}</p>
+              <p className="text-sm text-muted">{isPlaying ? "Playing" : "Paused"}</p>
             </div>
             <button
               type="button"
@@ -127,7 +159,6 @@ export default function SessionPage() {
             </button>
           </div>
 
-          {/* Seekable progress bar */}
           <div className="flex flex-col gap-2">
             <div
               ref={trackRef}
@@ -159,25 +190,68 @@ export default function SessionPage() {
             </div>
           </div>
 
-          {/* Play / pause */}
           <div className="flex justify-center">
             <button
               type="button"
               onClick={togglePlay}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-background transition-transform hover:scale-105 active:scale-95"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-accent text-background transition-transform hover:scale-105 active:scale-95"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying ? (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                   <rect x="6" y="5" width="4" height="14" rx="1" />
                   <rect x="14" y="5" width="4" height="14" rx="1" />
                 </svg>
               ) : (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               )}
             </button>
+          </div>
+        </div>
+
+        {/* The room — reactions stream in at their timestamp */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-sm font-medium text-foreground">The room</span>
+            <span className="text-xs text-muted">
+              {shown.length} / {(reactions ?? []).length} reactions
+            </span>
+          </div>
+
+          <div
+            ref={feedRef}
+            className="flex h-72 flex-col gap-3 overflow-y-auto rounded-2xl border border-stone-800 bg-surface/40 p-4"
+          >
+            {shown.length === 0 ? (
+              <div className="flex flex-1 items-center justify-center text-center text-sm text-muted">
+                Hit play — the room is listening.
+              </div>
+            ) : (
+              shown.map((r, i) => {
+                const p = personaByName(r.persona);
+                return (
+                  <div key={i} className="animate-reaction-in flex items-start gap-3">
+                    <div
+                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-background"
+                      style={{ backgroundColor: p?.color ?? "#78716c" }}
+                    >
+                      {p?.initials ?? r.persona.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-medium text-foreground">{r.persona}</span>
+                        <span className="font-mono text-[11px] tabular-nums text-muted">
+                          {formatTime(r.time)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-stone-300">{r.reaction}</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

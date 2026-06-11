@@ -98,5 +98,22 @@ export async function POST(req: Request) {
     );
   }
 
+  logTimeline(meta, cleaned);
   return NextResponse.json({ reactions: cleaned });
+}
+
+// Pretty-print the timeline to the server terminal so you can see what the
+// audience said before the Phase 3 feed renders it on screen.
+function logTimeline(meta: TrackMeta, reactions: Reaction[]) {
+  const ts = (s: number) =>
+    `${Math.floor(s / 60)}:${Math.floor(s % 60)
+      .toString()
+      .padStart(2, "0")}`;
+  console.log(
+    `\n🎧  "${meta.title}" — ${meta.genre} — ${reactions.length} reactions over ${ts(meta.duration)}`,
+  );
+  for (const r of reactions) {
+    console.log(`   ${ts(r.time).padStart(5)}  ${r.persona.padEnd(8)} ${r.reaction}`);
+  }
+  console.log("");
 }
