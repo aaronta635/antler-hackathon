@@ -98,3 +98,10 @@ Verify: song ends, a polished summary appears that feels insightful.
 - Handle the AI call failing gracefully — never let a failed parse 
   crash the demo.
 - Do NOT add features I didn't ask for. Depth over breadth.
+- Use folders to keep many pages on router, don't use components and add it all on 1 page. 
+
+## Rules for Claude Code on this codebase
+- Add a reasoning decision.md file explaining how do we decide on each step.
+- ALWAYS ask me about decision making, I want to decide most of the feature paths myself.
+- Add smaller steps in phases, document it in a doucment.md. 
+- ALWAYS checkout to a new branch for each feature so I can track back (e.g. `feature/<name>`). Don't commit features straight onto main/scaffold.
