@@ -96,9 +96,9 @@ Companion to `document.md` (the step plan + strategy research).
 - **Why generateObject over manual parse:** schema-enforced JSON is the most bulletproof way to
   honor "never let a failed parse crash the demo." We still wrap it: retry once on
   `NoObjectGeneratedError`, clean/clamp/sort rows, clear errors with proper status codes.
-- **Why Opus 4.8:** persona quality is the product's core wow; verified output is excellent and
-  fast enough behind a "Gathering the room…" state. **Open feature decision:** Opus (quality) vs
-  Sonnet 4.6 (faster/cheaper) for the live demo — pricing Opus $5/$25 vs Sonnet $3/$15 per 1M.
+- **Model choice (resolved):** `claude-sonnet-4-6` for the demo — faster/cheaper for repeated
+  practice runs, still excellent persona text. (Opus 4.8 verified great too; swap is one line.)
+  Pricing Sonnet $3/$15 vs Opus $5/$25 per 1M.
 - **No `temperature`/`top_p`:** Opus 4.8 rejects them; the AI SDK omits them by default.
 
 ## D15 — API validation order: input before server-key check

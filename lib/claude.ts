@@ -2,10 +2,10 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { personasForPrompt } from "./personas";
 import type { TrackMeta } from "./reactions";
 
-// One place to swap the model. claude-opus-4-8 is the most capable model — the
-// persona quality is the core "wow" of the demo. Swap to "claude-sonnet-4-6" for
-// faster/cheaper generation if demo latency matters more than nuance.
-export const MODEL = anthropic("claude-opus-4-8");
+// One place to swap the model (decision D14). Sonnet 4.6 chosen for the demo:
+// faster/cheaper for repeated runs, still excellent persona text. Swap to
+// "claude-opus-4-8" for maximum nuance if latency/cost stop mattering.
+export const MODEL = anthropic("claude-sonnet-4-6");
 
 // Returns true if the server can actually call Claude, so the route can fail
 // fast with a clear message instead of a cryptic SDK error.
