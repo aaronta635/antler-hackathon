@@ -100,7 +100,20 @@ create policy "owners manage their audiences"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- =====================================================================
+-- leads: waitlist capture (name + email, no verification) — server-written
+-- =====================================================================
+create table if not exists public.leads (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz not null default now(),
+  name        text,
+  email       text not null
+);
+alter table public.leads enable row level security;
+-- Writes happen server-side via the service role; no public policies needed.
+
 -- Helpful indexes
 create index if not exists sessions_user_idx   on public.sessions (user_id, created_at desc);
 create index if not exists feedback_session_idx on public.feedback (session_id);
 create index if not exists audiences_user_idx   on public.audiences (user_id, created_at desc);
+create index if not exists leads_email_idx       on public.leads (email);

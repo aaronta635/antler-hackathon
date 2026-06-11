@@ -158,4 +158,14 @@ Companion to `document.md` (the step plan + strategy research).
 - **Feedback:** `/api/feedback` + a feeling (🔥/🙂/😐/👎) + comment widget on the scorecard.
 - **Deferred:** public share links (`/s/[id]`) — lowest-priority growth piece, next.
 
+## D22 — Waitlist soft gate replaces magic-link auth
+- **Decision:** Drop verified magic-link auth; the homescreen now captures **name + email with no
+  verification** (waitlist) and is a **soft gate** — the "Start a session" action is revealed after
+  submit; returning visitors skip it (localStorage flag).
+- **Why:** User wants real name+email "for actual data" without the friction of an email round-trip.
+- **Implementation:** `leads` table (server-written via service role); `/api/lead` (best-effort,
+  never hard-blocks). Removed `middleware.ts`, `app/auth/callback`, `lib/use-user.ts`,
+  `lib/supabase/client.ts`. Sessions + feedback now always anonymous (user_id null) — already handled.
+- **Run the new table:** `leads` section added to `supabase/schema.sql`.
+
 (See `document.md` PART B for the research behind these.)

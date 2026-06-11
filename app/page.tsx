@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { useUser } from "@/lib/use-user";
 
 export default function Home() {
   const router = useRouter();
-  const { user, loading } = useUser();
+  // Soft gate (D22): show the "who are you" form first; reveal Start after they
+  // submit. Returning visitors skip it (flag in localStorage).
+  const [known, setKnown] = useState(false);
+  const [greeting, setGreeting] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Deferred so it doesn't run synchronously in the effect body (and is SSR-safe).
+    queueMicrotask(() => {
+      if (localStorage.getItem("waitlist_done") === "1") {
+        setKnown(true);
+        setGreeting(localStorage.getItem("waitlist_name"));
+      }
+    });
+  }, []);
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
@@ -20,20 +31,24 @@ export default function Home() {
             Play your track for a room that won&apos;t lie to you.
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted">
-            Five (or more) synthetic listeners react in real time, timestamped to the
-            moment — then hand you an honest scorecard.
+            Synthetic listeners react in real time, timestamped to the moment — then
+            hand you an honest scorecard.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => router.push("/upload")}
-          className="w-full rounded-full bg-accent px-6 py-3.5 font-medium text-background transition-transform hover:scale-[1.02]"
-        >
-          Start a session →
-        </button>
-
-        {!loading && (user ? <SignedIn email={user.email ?? ""} /> : <LoginCard />)}
+        {known ? (
+          <Start
+            greeting={greeting}
+            onStart={() => router.push("/upload")}
+          />
+        ) : (
+          <Gate
+            onDone={(name) => {
+              setKnown(true);
+              setGreeting(name || null);
+            }}
+          />
+        )}
       </div>
     </main>
   );
@@ -54,49 +69,47 @@ function Equalizer() {
   );
 }
 
-function LoginCard() {
+// The waitlist capture. No verification — we just want to know who's listening.
+function Gate({ onDone }: { onDone: (name: string) => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function sendLink(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setSending(true);
+    setBusy(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: { name: name.trim() },
-        },
+      const res = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
       });
-      if (error) setError(error.message);
-      else setSent(true);
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data?.error ?? "Please check your details.");
+        return;
+      }
+      localStorage.setItem("waitlist_done", "1");
+      if (name.trim()) localStorage.setItem("waitlist_name", name.trim());
+      onDone(name.trim());
     } catch {
-      setError("Couldn't send the link. Try again.");
+      // Don't hard-block on a network hiccup — let them in anyway.
+      localStorage.setItem("waitlist_done", "1");
+      onDone(name.trim());
     } finally {
-      setSending(false);
+      setBusy(false);
     }
-  }
-
-  if (sent) {
-    return (
-      <p className="text-sm text-muted">
-        ✦ Check <span className="text-foreground">{email}</span> for your magic link.
-      </p>
-    );
   }
 
   return (
     <form
-      onSubmit={sendLink}
+      onSubmit={submit}
       className="flex w-full flex-col gap-3 rounded-2xl border border-stone-800 bg-surface/40 p-5 text-left"
     >
-      <p className="text-xs text-muted">Save your sessions — sign in with email</p>
+      <p className="text-sm font-medium text-foreground">First — we&apos;d love to know you</p>
+      <p className="-mt-1 text-xs text-muted">We&apos;re early. No password, no spam — just say hi.</p>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -113,26 +126,29 @@ function LoginCard() {
       {error && <p className="text-xs text-rose-300">{error}</p>}
       <button
         type="submit"
-        disabled={sending || !email.trim() || !name.trim()}
-        className="rounded-full border border-accent/60 px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-40"
+        disabled={busy || !email.trim()}
+        className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-background transition-opacity disabled:opacity-40"
       >
-        {sending ? "Sending…" : "Send magic link"}
+        {busy ? "One sec…" : "Continue ↓"}
       </button>
     </form>
   );
 }
 
-function SignedIn({ email }: { email: string }) {
-  async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-  }
+function Start({ greeting, onStart }: { greeting: string | null; onStart: () => void }) {
   return (
-    <p className="text-sm text-muted">
-      Signed in as <span className="text-foreground">{email}</span> ·{" "}
-      <button type="button" onClick={signOut} className="text-accent hover:underline">
-        sign out
+    <div className="flex w-full flex-col items-center gap-3">
+      {greeting && <p className="text-sm text-muted">You&apos;re in, {greeting} ✦</p>}
+      <span className="animate-bounce text-accent" aria-hidden>
+        ↓
+      </span>
+      <button
+        type="button"
+        onClick={onStart}
+        className="w-full rounded-full bg-accent px-6 py-3.5 font-medium text-background transition-transform hover:scale-[1.02]"
+      >
+        Start a session →
       </button>
-    </p>
+    </div>
   );
 }
