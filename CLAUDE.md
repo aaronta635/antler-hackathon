@@ -101,7 +101,7 @@ Verify: song ends, a polished summary appears that feels insightful.
 - Use folders to keep many pages on router, don't use components and add it all on 1 page. 
 
 ## Rules for Claude Code on this codebase
-- Add a reasoning decision.md file explaining how do we decide on each step.
-- ALWAYS ask me about decision making, I want to decide most of the feature paths myself.
-- Add smaller steps in phases, document it in a doucment.md. 
-- ALWAYS checkout to a new branch for each feature so I can track back (e.g. `feature/<name>`). Don't commit features straight onto main/scaffold.
+- Only the pitch is judged — not the code or docs. Optimize for shipping, not ceremony. Don't waste tokens on process.
+- Work directly on `main`. No feature branches. Commit locally as you go; push to `main` later when I ask.
+- ALWAYS ask me about business/product/feature decisions — I want to drive those. Code/implementation choices are pre-approved; just make them and keep moving.
+- No per-change docs. Do NOT update decision.md/document.md on each prompt. Write ONE short summary doc only at the very end, once the product is complete.
