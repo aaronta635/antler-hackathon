@@ -9,25 +9,28 @@ import {
   type ReactNode,
 } from "react";
 import type { Reaction, TrackMeta } from "./reactions";
+import type { Room } from "./audience";
 import type { Summary } from "./summary";
 
 /**
  * Holds everything that has to survive navigation between the router pages
- * (/ -> /details -> /session -> /summary). Mounted once in app/layout.tsx, so
- * it persists across client-side route changes — no database (decision D12).
+ * (/ -> /details -> /audience -> /session -> /summary). Mounted once in
+ * app/layout.tsx, so it persists across client-side route changes (decision D12).
  */
 type SessionState = {
   fileUrl: string | null;
   fileName: string | null;
-  /** Create an object URL for the dropped/selected file and store it. */
   loadTrack: (file: File) => void;
 
   meta: TrackMeta | null;
-  reactions: Reaction[] | null;
-  /** Save the track info + generated timeline (called from /details on success). */
-  setGenerated: (meta: TrackMeta, reactions: Reaction[]) => void;
+  setMeta: (meta: TrackMeta) => void;
 
-  // Cached end-of-song verdict so navigating back to /summary doesn't refetch.
+  room: Room | null;
+  setRoom: (room: Room) => void;
+
+  reactions: Reaction[] | null;
+  setReactions: (reactions: Reaction[]) => void;
+
   summary: Summary | null;
   setSummary: (summary: Summary) => void;
 };
@@ -38,26 +41,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [meta, setMeta] = useState<TrackMeta | null>(null);
+  const [room, setRoom] = useState<Room | null>(null);
   const [reactions, setReactions] = useState<Reaction[] | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
 
   const loadTrack = useCallback((file: File) => {
-    // Revoke the previous URL so we don't leak memory across loads.
     setFileUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
     });
     setFileName(file.name);
-    // A new track invalidates any prior timeline + verdict.
+    // A new track invalidates everything downstream.
     setMeta(null);
+    setRoom(null);
     setReactions(null);
     setSummary(null);
-  }, []);
-
-  const setGenerated = useCallback((m: TrackMeta, r: Reaction[]) => {
-    setMeta(m);
-    setReactions(r);
-    setSummary(null); // a fresh timeline invalidates an old verdict
   }, []);
 
   const value = useMemo(
@@ -66,12 +64,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       fileName,
       loadTrack,
       meta,
+      setMeta,
+      room,
+      setRoom,
       reactions,
-      setGenerated,
+      setReactions,
       summary,
       setSummary,
     }),
-    [fileUrl, fileName, loadTrack, meta, reactions, setGenerated, summary],
+    [fileUrl, fileName, loadTrack, meta, room, reactions, summary],
   );
 
   return (

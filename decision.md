@@ -114,4 +114,25 @@ Companion to `document.md` (the step plan + strategy research).
   replyTo to a valid *other* persona or null; feed shows "↳ replying to {name}".
 - **Deferred (offered, not chosen):** presence bar; messier/edgier voice prompt tuning.
 
+## D17 — Dynamic audience (replaces static 5 personas)
+- **Decision:** Personas → a configurable **room**. `lib/audience.ts` defines the model: 5 default
+  listeners (now a toggleable roster) + user-added **custom listeners** (structured fields: age,
+  genres, music-knowledge type, criticality), up to **MAX_ROOM = 6**, plus a global **brutality dial**
+  (gentle/honest/savage). New `/audience` screen between `/details` and `/session`.
+- **Prompts are now room-driven:** `reactionsSystem/Prompt` and `summarySystem/Prompt` build from the
+  selected listeners + tone; custom listeners get a "invent a believable voice" instruction.
+- **Flow:** `/` → `/details` (collect meta) → `/audience` (build room → generate) → `/session` → `/summary`.
+
+## D18 — Killed replies, made the room more critical
+- **Decision:** Removed the `replyTo`/pile-on mechanic (felt "tryna-be"). Kept typing indicators.
+- **More critical baseline:** `toneInstruction` makes the room hard to impress (ration praise, call out
+  clichés/weak hooks/muddy mixing); default listeners re-tuned toward harsher criticality.
+
+## D19 — Add Supabase (reverses D1 "no database")
+- **Decision:** Add Supabase for launch — persist sessions + verdicts, capture real feedback
+  (comment + feeling), magic-link auth capturing **name + email**, and shareable result links.
+- **Auth:** magic link (passwordless); login optional for use, captures name+email.
+- **Security model:** server writes via service-role key (bypasses RLS); RLS guards reads/share-links
+  and user-owned audiences. Secrets only in gitignored `.env.local`; schema in `supabase/schema.sql`.
+
 (See `document.md` PART B for the research behind these.)

@@ -1,5 +1,5 @@
 import { anthropic } from "@ai-sdk/anthropic";
-import { personasForPrompt } from "./personas";
+import { listenersPromptBlock, toneInstruction, type Room } from "./audience";
 import type { Reaction, TrackMeta } from "./reactions";
 
 // One place to swap the model (decision D14). Sonnet 4.6 chosen for the demo:
@@ -7,25 +7,28 @@ import type { Reaction, TrackMeta } from "./reactions";
 // "claude-opus-4-8" for maximum nuance if latency/cost stop mattering.
 export const MODEL = anthropic("claude-sonnet-4-6");
 
-// Returns true if the server can actually call Claude, so the route can fail
-// fast with a clear message instead of a cryptic SDK error.
+// Returns true if the server can actually call Claude, so a route can fail fast
+// with a clear message instead of a cryptic SDK error.
 export function hasApiKey(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
-const SYSTEM = `You are simulating a small, diverse listening room of five real music fans reacting to a track in real time, as it plays.
+// --- Phase 2: reaction generation (now room-driven, D17) --------------------
 
-Each person is a distinct individual. Stay rigorously in character — match each one's writing voice, taste, and biases. They disagree with each other. They are honest, not polite: they will be lukewarm or critical when the track doesn't earn praise. Never write a generic "great song!" reaction.
+export function reactionsSystem(room: Room): string {
+  return `You are simulating a listening room of music fans reacting to a track in real time, as it plays.
 
-THE FIVE LISTENERS:
-${personasForPrompt()}`;
+Each person is a distinct individual. Stay rigorously in character — match each one's writing voice, taste, knowledge, and biases. They disagree with each other.
 
-/**
- * Builds the per-track instruction. We ask for a JSON timeline spread across the
- * whole song, reacting to imagined structural moments. The route enforces the
- * actual JSON shape via a schema, so this focuses on content quality.
- */
-export function reactionsPrompt(meta: TrackMeta): string {
+THE LISTENERS:
+${listenersPromptBlock(room.listeners)}
+
+${toneInstruction(room.brutality)}`;
+}
+
+export function reactionsPrompt(meta: TrackMeta, room: Room): string {
+  const names = room.listeners.map((l) => l.name).join(", ");
+  const target = Math.min(18, Math.max(10, room.listeners.length * 3));
   return `A track is about to play. Here is what its creator told us:
 
 - Title: ${meta.title}
@@ -33,34 +36,29 @@ export function reactionsPrompt(meta: TrackMeta): string {
 - Vibe / description: ${meta.vibe}
 - Total duration: ${Math.round(meta.duration)} seconds
 
-Generate a timeline of 12–18 reactions, as if these five people were listening together and reacting in the moment.
+Generate a timeline of about ${target} reactions, as if these people were listening together and reacting in the moment.
 
 Rules:
 - Spread reactions across the FULL duration (0 to ${Math.round(meta.duration)}s). Do not bunch them at the start.
 - React to imagined structural moments: the intro, the first hook, a drop or beat switch, the bridge, the final chorus, the outro.
 - Every listener should appear at least twice. Let their takes diverge — someone can love a moment another dislikes.
 - Each "reaction" is ONE short line (usually under 120 characters) in that persona's exact writing voice.
-- "persona" must be one of: Maya, DeShawn, Priya, Hank, Sofia.
-- "time" is the second within the track the reaction lands on.
-- THE ROOM IS SOCIAL: 4–6 of the reactions should reply to or pile onto what another listener JUST said a moment earlier — agreeing, pushing back, or dunking on them. For those, set "replyTo" to that person's name and have the line clearly respond to their take (it can name them, e.g. "nah Hank you're wrong"). The replying reaction's time must come a few seconds AFTER the one it answers. For every other reaction, "replyTo" must be null.`;
+- "persona" must be EXACTLY one of these names: ${names}.
+- "time" is the second within the track the reaction lands on.`;
 }
-
-export { SYSTEM as REACTIONS_SYSTEM };
 
 // --- Phase 4: end-of-song verdict ------------------------------------------
 
-const SUMMARY_SYSTEM = `You are the producer in the room, reading the five listeners after a track finishes. Your job is a sharp, honest verdict an artist or their manager can act on — not a polite recap.
+export function summarySystem(room: Room): string {
+  return `You are the producer in the room, reading the listeners after a track finishes. Your job is a sharp, honest verdict an artist or their manager can act on — not a polite recap.
 
-THE FIVE LISTENERS:
-${personasForPrompt()}
+THE LISTENERS:
+${listenersPromptBlock(room.listeners)}
 
-Voice: blunt, specific, opinionated. Reference the actual moments and what specific people said. Never hedge, never write generic praise. If the room was lukewarm, say so.`;
+${toneInstruction(room.brutality)}
+Voice: blunt, specific, opinionated. Reference the actual moments and what specific people said.`;
+}
 
-/**
- * Builds the verdict prompt from the full reaction timeline. Asks for a structured
- * decision layer (best moment / drop-off risk / share signal) grounded in what was
- * actually said. The route enforces the JSON shape via a schema.
- */
 export function summaryPrompt(meta: TrackMeta, reactions: Reaction[]): string {
   const timeline = reactions
     .map((r) => `[${Math.round(r.time)}s] ${r.persona}: ${r.reaction}`)
@@ -76,9 +74,7 @@ Write the verdict:
 - verdict: ONE blunt sentence capturing the room's overall take (the honest headline).
 - bestMoment: the single moment that landed hardest — the second it happens and why, citing what people said.
 - dropOff: the biggest risk — where listeners cooled off or would tune out — the second and why.
-- share: of the five, who is most likely to actually share this, on what platform, and the exact clip or reason they'd post it.
+- share: of the listeners, who is most likely to actually share this, on what platform, and the exact clip or reason they'd post it.
 
 Ground every field in the real reactions above. Use the listeners' names. Be specific about timestamps.`;
 }
-
-export { SUMMARY_SYSTEM };

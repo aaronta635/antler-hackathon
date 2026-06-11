@@ -3,27 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
-import { reactionsResponseSchema, type TrackMeta } from "@/lib/reactions";
+import { trackMetaSchema, type TrackMeta } from "@/lib/reactions";
 
-// Strip the extension to seed the title field from the filename.
 function titleFromFile(name: string): string {
   return name.replace(/\.[^/.]+$/, "");
 }
 
 export default function DetailsPage() {
   const router = useRouter();
-  const { fileUrl, fileName, setGenerated } = useSession();
+  const { fileUrl, fileName, setMeta } = useSession();
 
-  // Seed the title from the filename at first render (context already has it
-  // by the time we navigate here from /).
   const [title, setTitle] = useState(() => (fileName ? titleFromFile(fileName) : ""));
   const [genre, setGenre] = useState("");
   const [vibe, setVibe] = useState("");
-  const [duration, setDuration] = useState(0); // seconds, auto-detected
-  const [submitting, setSubmitting] = useState(false);
+  const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Guard: no track loaded (e.g. refresh wiped context) -> back to upload.
   useEffect(() => {
     if (!fileUrl) router.replace("/");
   }, [fileUrl, router]);
@@ -39,43 +34,19 @@ export default function DetailsPage() {
     });
   }, [fileUrl]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-
     const meta: TrackMeta = { title, genre, vibe, duration };
-    try {
-      const res = await fetch("/api/reactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(meta),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        // The API always returns { error } on failure — show it as-is.
-        setError(data?.error ?? "Something went wrong. Please try again.");
-        return;
-      }
-
-      // Validate the shape on the client too, so a surprise payload can't crash /session.
-      const parsed = reactionsResponseSchema.safeParse(data);
-      if (!parsed.success) {
-        setError("Got an unexpected response. Please try again.");
-        return;
-      }
-
-      setGenerated(meta, parsed.data.reactions);
-      router.push("/session");
-    } catch {
-      setError("Network error — check your connection and try again.");
-    } finally {
-      setSubmitting(false);
+    const parsed = trackMetaSchema.safeParse(meta);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Please fill in every field.");
+      return;
     }
+    setMeta(parsed.data);
+    router.push("/audience"); // next: build the room that listens
   }
 
-  if (!fileUrl) return null; // redirecting
+  if (!fileUrl) return null;
 
   const ready = title.trim() && genre.trim() && vibe.trim() && duration > 0;
 
@@ -87,10 +58,10 @@ export default function DetailsPage() {
       >
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            Tell the room about your track
+            Tell us about your track
           </h1>
           <p className="mt-1 text-sm text-muted">
-            The audience reacts to this — describe it like you would to a friend.
+            Describe it like you would to a friend — this is what the room reacts to.
           </p>
         </div>
 
@@ -140,10 +111,10 @@ export default function DetailsPage() {
 
         <button
           type="submit"
-          disabled={!ready || submitting}
-          className="flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 font-medium text-background transition-opacity disabled:opacity-40"
+          disabled={!ready}
+          className="rounded-full bg-accent px-6 py-3 font-medium text-background transition-opacity disabled:opacity-40"
         >
-          {submitting ? "Gathering the room…" : "Generate the listening session"}
+          Next: build the room →
         </button>
       </form>
     </main>

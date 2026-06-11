@@ -4,25 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { formatTime } from "@/lib/format";
-import { personaByName } from "@/lib/personas";
+import { listenerByName, type Room } from "@/lib/audience";
 import { summarySchema, type Summary } from "@/lib/summary";
 
 export default function SummaryPage() {
   const router = useRouter();
-  const { meta, reactions, summary, setSummary } = useSession();
+  const { meta, room, reactions, summary, setSummary } = useSession();
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!summary);
 
   // No timeline in memory (refresh wiped context) -> back to start.
   useEffect(() => {
-    if (!meta || !reactions) router.replace("/");
-  }, [meta, reactions, router]);
+    if (!meta || !reactions || !room) router.replace("/");
+  }, [meta, reactions, room, router]);
 
   // Generate the verdict once, on arrival, unless it's already cached in context.
   const requested = useRef(false);
   useEffect(() => {
-    if (summary || requested.current || !meta || !reactions) return;
+    if (summary || requested.current || !meta || !reactions || !room) return;
     requested.current = true;
 
     (async () => {
@@ -30,7 +30,7 @@ export default function SummaryPage() {
         const res = await fetch("/api/summary", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ meta, reactions }),
+          body: JSON.stringify({ meta, room, reactions }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -49,16 +49,18 @@ export default function SummaryPage() {
         setLoading(false);
       }
     })();
-  }, [summary, meta, reactions, setSummary]);
+  }, [summary, meta, room, reactions, setSummary]);
 
-  if (!meta || !reactions) return null; // redirecting
+  if (!meta || !reactions || !room) return null; // redirecting
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-xl">
         {loading && !summary && <VerdictLoading />}
         {error && !summary && <VerdictError message={error} onRetry={() => router.refresh()} />}
-        {summary && <Verdict summary={summary} title={meta.title} onReplay={() => router.push("/")} />}
+        {summary && (
+          <Verdict summary={summary} room={room} title={meta.title} onReplay={() => router.push("/")} />
+        )}
       </div>
     </main>
   );
@@ -90,14 +92,16 @@ function VerdictError({ message, onRetry }: { message: string; onRetry: () => vo
 
 function Verdict({
   summary,
+  room,
   title,
   onReplay,
 }: {
   summary: Summary;
+  room: Room;
   title: string;
   onReplay: () => void;
 }) {
-  const sharer = personaByName(summary.share.persona);
+  const sharer = listenerByName(room, summary.share.persona);
 
   return (
     <div className="flex flex-col gap-8">

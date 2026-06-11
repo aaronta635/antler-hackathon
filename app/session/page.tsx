@@ -4,14 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { formatTime } from "@/lib/format";
-import { personaByName } from "@/lib/personas";
+import { listenerByName } from "@/lib/audience";
 
 // How long before a reaction's timestamp its author appears as "typing…".
 const TYPING_LEAD = 1.3; // seconds
 
 export default function SessionPage() {
   const router = useRouter();
-  const { fileUrl, fileName, reactions } = useSession();
+  const { fileUrl, fileName, reactions, room } = useSession();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -258,7 +258,7 @@ export default function SessionPage() {
             ) : (
               <>
                 {shown.map((r, i) => {
-                  const p = personaByName(r.persona);
+                  const p = listenerByName(room, r.persona);
                   return (
                     <div key={i} className="animate-reaction-in flex items-start gap-3">
                       <div
@@ -274,9 +274,6 @@ export default function SessionPage() {
                             {formatTime(r.time)}
                           </span>
                         </div>
-                        {r.replyTo && (
-                          <p className="text-xs text-muted">↳ replying to {r.replyTo}</p>
-                        )}
                         <p className="text-sm text-stone-300">{r.reaction}</p>
                       </div>
                     </div>
@@ -285,7 +282,7 @@ export default function SessionPage() {
 
                 {/* Typing indicators for whoever is about to speak */}
                 {typing.map((r) => {
-                  const p = personaByName(r.persona);
+                  const p = listenerByName(room, r.persona);
                   return (
                     <div
                       key={`typing-${r.persona}-${r.time}`}

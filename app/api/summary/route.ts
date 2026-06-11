@@ -1,21 +1,28 @@
 import { NextResponse } from "next/server";
 import { generateObject, NoObjectGeneratedError } from "ai";
-import { MODEL, SUMMARY_SYSTEM, summaryPrompt, hasApiKey } from "@/lib/claude";
-import { trackMetaSchema, reactionSchema, type TrackMeta, type Reaction } from "@/lib/reactions";
+import { MODEL, summarySystem, summaryPrompt, hasApiKey } from "@/lib/claude";
+import {
+  trackMetaSchema,
+  reactionSchema,
+  roomSchema,
+  type TrackMeta,
+  type Reaction,
+} from "@/lib/reactions";
 import { summarySchema, type Summary } from "@/lib/summary";
+import type { Room } from "@/lib/audience";
 import { z } from "zod";
 
-// Body = the track metadata + the full timeline from /api/reactions.
 const bodySchema = z.object({
   meta: trackMetaSchema,
+  room: roomSchema,
   reactions: z.array(reactionSchema).min(1),
 });
 
-async function generateSummary(meta: TrackMeta, reactions: Reaction[]): Promise<Summary> {
+async function generateSummary(meta: TrackMeta, room: Room, reactions: Reaction[]): Promise<Summary> {
   const { object } = await generateObject({
     model: MODEL,
     schema: summarySchema,
-    system: SUMMARY_SYSTEM,
+    system: summarySystem(room),
     prompt: summaryPrompt(meta, reactions),
     maxOutputTokens: 1200,
   });
@@ -23,7 +30,6 @@ async function generateSummary(meta: TrackMeta, reactions: Reaction[]): Promise<
 }
 
 export async function POST(req: Request) {
-  // 1. Validate input first.
   let body: unknown;
   try {
     body = await req.json();
@@ -38,9 +44,8 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { meta, reactions } = parsed.data;
+  const { meta, room, reactions } = parsed.data;
 
-  // 2. Need a key to reach Claude.
   if (!hasApiKey()) {
     return NextResponse.json(
       { error: "Server is missing ANTHROPIC_API_KEY. Add it to .env.local and restart." },
@@ -48,14 +53,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // 3. Generate — retry once on a bad/unparseable response, clean errors otherwise.
   let summary: Summary;
   try {
-    summary = await generateSummary(meta, reactions);
+    summary = await generateSummary(meta, room, reactions);
   } catch (firstError) {
     if (NoObjectGeneratedError.isInstance(firstError)) {
       try {
-        summary = await generateSummary(meta, reactions);
+        summary = await generateSummary(meta, room, reactions);
       } catch {
         return NextResponse.json(
           { error: "The room couldn't reach a verdict. Try again in a moment." },
