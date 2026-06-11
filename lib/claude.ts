@@ -67,7 +67,9 @@ ${structure}
 - Let their takes diverge — someone can love a moment another dislikes.
 - Each "reaction" is ONE line, casual (usually under 140 characters), in that persona's voice.
 - "persona" must be EXACTLY one of these names: ${names}.
-- "time" is the second within the track the reaction lands on (0 to ${dur}).`;
+- "time" is the second within the track the reaction lands on (0 to ${dur}).
+
+Also produce "energy": the room's collective ENERGY/HYPE curve over the song — ${short ? 8 : 18} points evenly spread from time 0 to ${dur}. Each point: { time, level } where level is 0–100 (0 = bored / checked out, 100 = room fully locked in, hyped, hands up). Make it MOVE: it should rise into hooks/choruses/drops/big moments and dip in intros, filler, or weak sections. Keep it consistent with the reactions above.`;
 }
 
 // --- Phase 4: end-of-song verdict ------------------------------------------

@@ -49,9 +49,18 @@ export const reactionSchema = z.object({
 
 export type Reaction = z.infer<typeof reactionSchema>;
 
-// generateObject needs an object at the top level, so the array is wrapped.
+// A point on the room's energy/hype curve over the song.
+export const energyPointSchema = z.object({
+  time: z.number().min(0), // seconds
+  level: z.number().min(0).max(100), // 0 = checked out, 100 = room is locked in / hyped
+});
+
+export type EnergyPoint = z.infer<typeof energyPointSchema>;
+
+// generateObject needs an object at the top level, so the arrays are wrapped.
 export const reactionsResponseSchema = z.object({
   reactions: z.array(reactionSchema).min(1),
+  energy: z.array(energyPointSchema),
 });
 
 // POST /api/reactions body: the track + the room that's listening (+ optional lyrics).

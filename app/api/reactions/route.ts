@@ -5,13 +5,14 @@ import {
   reactionsRequestSchema,
   reactionsResponseSchema,
   type Reaction,
+  type EnergyPoint,
   type TrackMeta,
 } from "@/lib/reactions";
 import type { Room } from "@/lib/audience";
 
 // Calls Claude once and returns validated reactions. generateObject forces the
 // model to match our schema and throws NoObjectGeneratedError on a bad response.
-async function generateReactions(meta: TrackMeta, room: Room, lyrics?: string): Promise<Reaction[]> {
+async function generateReactions(meta: TrackMeta, room: Room, lyrics?: string) {
   const { object } = await generateObject({
     model: MODEL,
     schema: reactionsResponseSchema,
@@ -19,7 +20,15 @@ async function generateReactions(meta: TrackMeta, room: Room, lyrics?: string): 
     prompt: reactionsPrompt(meta, room, lyrics),
     maxOutputTokens: 4000,
   });
-  return object.reactions;
+  return object; // { reactions, energy }
+}
+
+// Clamp the energy curve to the track length, sort by time.
+function cleanEnergy(energy: EnergyPoint[], duration: number): EnergyPoint[] {
+  return energy
+    .filter((p) => Number.isFinite(p.time) && p.time >= 0 && p.time <= duration)
+    .map((p) => ({ time: p.time, level: Math.min(100, Math.max(0, p.level)) }))
+    .sort((a, b) => a.time - b.time);
 }
 
 // Drop malformed rows, clamp to the track length, keep only listeners who are
@@ -74,13 +83,13 @@ export async function POST(req: Request) {
   }
 
   // 3. Generate — try once, retry once on a bad/unparseable response.
-  let reactions: Reaction[];
+  let result: { reactions: Reaction[]; energy: EnergyPoint[] };
   try {
-    reactions = await generateReactions(meta, room, lyrics);
+    result = await generateReactions(meta, room, lyrics);
   } catch (firstError) {
     if (NoObjectGeneratedError.isInstance(firstError)) {
       try {
-        reactions = await generateReactions(meta, room, lyrics);
+        result = await generateReactions(meta, room, lyrics);
       } catch {
         return NextResponse.json(
           { error: "The audience couldn't agree on a take. Try again in a moment." },
@@ -98,7 +107,7 @@ export async function POST(req: Request) {
 
   // 4. Clean against the actual room, log, and return.
   const names = new Set(room.listeners.map((l) => l.name));
-  const cleaned = cleanReactions(reactions, meta.duration, names);
+  const cleaned = cleanReactions(result.reactions, meta.duration, names);
   if (cleaned.length === 0) {
     return NextResponse.json(
       { error: "Got an empty timeline back. Try tweaking the vibe and resubmitting." },
@@ -107,5 +116,5 @@ export async function POST(req: Request) {
   }
 
   logTimeline(meta, cleaned);
-  return NextResponse.json({ reactions: cleaned });
+  return NextResponse.json({ reactions: cleaned, energy: cleanEnergy(result.energy, meta.duration) });
 }

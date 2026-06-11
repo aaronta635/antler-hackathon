@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Reaction, TrackMeta } from "./reactions";
+import type { EnergyPoint, Reaction, TrackMeta } from "./reactions";
 import type { Room } from "./audience";
 import type { Summary } from "./summary";
 
@@ -35,6 +35,9 @@ type SessionState = {
   reactions: Reaction[] | null;
   setReactions: (reactions: Reaction[]) => void;
 
+  energy: EnergyPoint[] | null;
+  setEnergy: (energy: EnergyPoint[]) => void;
+
   summary: Summary | null;
   setSummary: (summary: Summary) => void;
 };
@@ -49,6 +52,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [meta, setMeta] = useState<TrackMeta | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const [reactions, setReactions] = useState<Reaction[] | null>(null);
+  const [energy, setEnergy] = useState<EnergyPoint[] | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
 
   const loadTrack = useCallback((f: File) => {
@@ -63,6 +67,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setMeta(null);
     setRoom(null);
     setReactions(null);
+    setEnergy(null);
     setSummary(null);
   }, []);
 
@@ -80,10 +85,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setRoom,
       reactions,
       setReactions,
+      energy,
+      setEnergy,
       summary,
       setSummary,
     }),
-    [fileUrl, fileName, file, loadTrack, lyrics, meta, room, reactions, summary],
+    [fileUrl, fileName, file, loadTrack, lyrics, meta, room, reactions, energy, summary],
   );
 
   return (

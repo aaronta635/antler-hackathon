@@ -22,7 +22,7 @@ import {
 
 export default function AudiencePage() {
   const router = useRouter();
-  const { fileUrl, meta, lyrics, setRoom, setReactions } = useSession();
+  const { fileUrl, meta, lyrics, setRoom, setReactions, setEnergy } = useSession();
 
   // Default roster: all 5 selected to start.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -86,6 +86,7 @@ export default function AudiencePage() {
         return;
       }
       setReactions(parsed.data.reactions);
+      setEnergy(parsed.data.energy);
       router.push("/session");
     } catch {
       setError("Network error — check your connection and try again.");

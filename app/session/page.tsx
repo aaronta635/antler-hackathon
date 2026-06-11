@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { formatTime } from "@/lib/format";
 import { listenerByName, KNOWLEDGE_TYPES, CRITICALITY, type Listener } from "@/lib/audience";
+import type { EnergyPoint } from "@/lib/reactions";
 
 // How long before a reaction's timestamp its author appears as "typing…".
 const TYPING_LEAD = 1.3; // seconds
@@ -41,7 +42,7 @@ function ListenerAvatar({ listener }: { listener: Listener }) {
 
 export default function SessionPage() {
   const router = useRouter();
-  const { fileUrl, fileName, reactions, room, lyrics } = useSession();
+  const { fileUrl, fileName, reactions, room, lyrics, energy } = useSession();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -241,6 +242,9 @@ export default function SessionPage() {
             </div>
           </div>
 
+          {/* Live room-energy curve, moving with playback */}
+          <EnergyCurve energy={energy ?? []} duration={duration} currentTime={currentTime} />
+
           <div className="relative flex items-center justify-center">
             <button
               type="button"
@@ -350,6 +354,82 @@ export default function SessionPage() {
         <LyricsPanel lyrics={lyrics} />
       </div>
     </main>
+  );
+}
+
+// Interpolate the room's energy level (0–100) at the current play position.
+function energyAt(energy: EnergyPoint[], t: number): number {
+  if (energy.length === 0) return 0;
+  if (t <= energy[0].time) return energy[0].level;
+  for (let i = 1; i < energy.length; i++) {
+    if (t <= energy[i].time) {
+      const a = energy[i - 1];
+      const b = energy[i];
+      const r = (t - a.time) / (b.time - a.time || 1);
+      return a.level + (b.level - a.level) * r;
+    }
+  }
+  return energy[energy.length - 1].level;
+}
+
+function energyLabel(level: number): { label: string; color: string } {
+  if (level >= 75) return { label: "locked in", color: "#34d399" };
+  if (level >= 50) return { label: "into it", color: "#f59e0b" };
+  if (level >= 30) return { label: "lukewarm", color: "#a8a29e" };
+  return { label: "checked out", color: "#fb7185" };
+}
+
+// An area chart of the room's energy across the song; a playhead tracks playback.
+function EnergyCurve({
+  energy,
+  duration,
+  currentTime,
+}: {
+  energy: EnergyPoint[];
+  duration: number;
+  currentTime: number;
+}) {
+  if (energy.length < 2 || !duration) return null;
+  const W = 100;
+  const H = 32;
+  const pts = energy.map((p) => ({
+    x: (Math.min(p.time, duration) / duration) * W,
+    y: H - (Math.min(100, Math.max(0, p.level)) / 100) * H,
+  }));
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ");
+  const area = `${line} L ${W} ${H} L 0 ${H} Z`;
+  const playX = Math.min(W, Math.max(0, (currentTime / duration) * W));
+  const level = energyAt(energy, currentTime);
+  const { label, color } = energyLabel(level);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted">Room energy</span>
+        <span className="font-medium" style={{ color }}>
+          {Math.round(level)} · {label}
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-12 w-full">
+        <defs>
+          <linearGradient id="energyFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#energyFill)" />
+        <path d={line} fill="none" stroke="#f59e0b" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        <line
+          x1={playX}
+          y1="0"
+          x2={playX}
+          y2={H}
+          stroke="#e7e5e4"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
   );
 }
 
