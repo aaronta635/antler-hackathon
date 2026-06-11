@@ -1,34 +1,34 @@
 import { z } from "zod";
 
-// The end-of-song payoff, redesigned as a visual scorecard (decision D20): a few
-// honest numbers + ultra-short notes instead of paragraphs. Grounded in the
-// actual reactions, NOT a fake "viral %" (still honors D9 — no false precision).
+// The end-of-song payoff, reframed around the artist's real question (the pitch):
+// is this ready to bet on? Instead of a vibe recap, it scores the COMPLETENESS of
+// the track across craft dimensions (mixing, vocals, writing, …) with reasoning,
+// plus the one thing to fix first. Grounded in what the strangers actually said.
 export const summarySchema = z.object({
-  headline: z.string().min(1), // one punchy sentence
-  score: z.number().min(0).max(100), // the room's overall rating
-  sentiment: z.object({
-    // counts of listeners — must sum to the room size
-    loved: z.number().int().min(0),
-    mixed: z.number().int().min(0),
-    passed: z.number().int().min(0),
-  }),
-  bestMoment: z.object({ time: z.number().min(0), note: z.string().min(1) }), // note <= 8 words
-  dropOff: z.object({ time: z.number().min(0), note: z.string().min(1) }),
+  // One honest line — where this track stands for a stranger audience.
+  headline: z.string().min(1),
+  // Overall "ready to bet on" score (0–100). Mixed/unfinished sits ~40–65.
+  readiness: z.number().min(0).max(100),
+  // Completeness by craft dimension — the core of the scorecard.
+  dimensions: z
+    .array(
+      z.object({
+        name: z.string().min(1), // e.g. Mixing, Vocals, Writing, Production, Hook
+        score: z.number().min(0).max(100),
+        note: z.string().min(1), // short reasoning (<= ~12 words)
+      }),
+    )
+    .min(3),
+  // The strongest moment (ties to the live timeline).
+  bestMoment: z.object({ time: z.number().min(0), note: z.string().min(1) }),
+  // The single most important thing to fix first — the thing friends won't say.
+  fixFirst: z.string().min(1),
+  // Market signal: how many of the room would actually share it.
   share: z.object({
-    count: z.number().int().min(0), // how many of N would share
+    count: z.number().int().min(0),
     persona: z.string().min(1),
     platform: z.string().min(1),
   }),
-  // one entry per listener, with a tiny note
-  listeners: z
-    .array(
-      z.object({
-        name: z.string().min(1),
-        verdict: z.enum(["loved", "mixed", "passed"]),
-        note: z.string().min(1), // <= 6 words
-      }),
-    )
-    .min(1),
 });
 
 export type Summary = z.infer<typeof summarySchema>;

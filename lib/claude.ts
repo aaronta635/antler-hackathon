@@ -18,6 +18,8 @@ export function hasApiKey(): boolean {
 export function reactionsSystem(room: Room): string {
   return `You are simulating a listening room of music fans reacting to a track in real time, as it plays.
 
+CRUCIAL FRAMING: these people are STRANGERS hearing this track cold — it came up on their For You feed / a discovery playlist / a random SoundCloud dive. They have NO relationship to the artist and owe them nothing. They didn't ask to hear this and have a thousand other tracks one swipe away. So their reactions are the honest truth the artist's friends and group chat would never tell them. Indifference is real and allowed — if a moment is boring, they show it (zoning out, reaching to skip), they don't politely cheer.
+
 Each person is a distinct individual. Stay rigorously in character — match each one's writing voice, taste, knowledge, and biases. They disagree with each other.
 
 THE LISTENERS:
@@ -64,6 +66,7 @@ ${structure}
 - TALK LIKE A NORMAL PERSON texting a friend, not a music critic. Casual, plain words, no fancy vocabulary or jargon.
 - MOST reactions are GUT reactions to easy-to-FEEL moments any normal listener notices the instant they happen: the chorus hitting, a big high note, a solo, the beat dropping, a key change, a catchy hook, the energy lifting or falling, a vocal run. Call those out as they land.
 - MIX the lengths: lots of short visceral ones ("ooo this part", "okay this is catchy", "wait this kinda goes hard", "that high note tho", "the chorus EATS"), and only SOME with a bit more detail (name one instrument, or one thing you'd tweak). Do NOT make every line analytical or high-level — keep it feel-first, the kind of thing someone blurts out while listening.
+- Show the STREAMING INSTINCT — the honest signal that matters: would they keep listening, skip, replay, or save? Let it surface naturally: "ngl I'd have skipped by now", "ok wait, replaying that", "saving this one", "lost me in this verse", "this intro is too long, get to it". A bored stranger reaching to skip is the most valuable honesty here.
 - Let their takes diverge — someone can love a moment another dislikes.
 - Each "reaction" is ONE line, casual (usually under 140 characters), in that persona's voice.
 - "persona" must be EXACTLY one of these names: ${names}.
@@ -75,37 +78,35 @@ Also produce "energy": the room's collective ENERGY/HYPE curve over the song —
 // --- Phase 4: end-of-song verdict ------------------------------------------
 
 export function summarySystem(room: Room): string {
-  return `You are the producer in the room, reading the listeners after a track finishes. Your job is a sharp, honest verdict an artist or their manager can act on — not a polite recap.
+  return `You are an honest A&R / producer reading the room after a track finishes — the test audience an indie artist never had access to. Your job: tell them how READY this track is to bet a career on, the way a label's team would, not the way their friends do.
 
-THE LISTENERS:
+You assess the COMPLETENESS of the craft (mixing, vocals, songwriting, production, the hook, arrangement) and reason about each — what's there, what's unfinished, what a stranger audience felt. Honest and specific, never generous-by-default, but fair: name strengths where they're real.
+
+THE LISTENERS (these were strangers hearing it cold):
 ${listenersPromptBlock(room.listeners)}
 
-${toneInstruction(room.brutality)}
-Voice: blunt, specific, opinionated. Reference the actual moments and what specific people said.`;
+${toneInstruction(room.brutality)}`;
 }
 
 export function summaryPrompt(meta: TrackMeta, room: Room, reactions: Reaction[]): string {
   const timeline = reactions
     .map((r) => `[${Math.round(r.time)}s] ${r.persona}: ${r.reaction}`)
     .join("\n");
-  const names = room.listeners.map((l) => l.name).join(", ");
   const n = room.listeners.length;
 
   return `Track: "${meta.title}" — ${meta.genre} — ${Math.round(meta.duration)}s.
 Vibe the creator described: ${meta.vibe}
 
-The ${n} listeners: ${names}.
-Everything they said, in order:
+What the ${n} cold-audience listeners said, in order:
 ${timeline}
 
-Produce a tight SCORECARD — this renders as a dashboard, so keep every field extremely short:
-- headline: ONE punchy sentence — the room's overall take.
-- score: 0–100, the room's honest overall rating (a mixed room is ~50–65; only a genuinely loved track clears 80).
-- sentiment: how many of the ${n} listeners loved it / were mixed / passed. These three numbers MUST sum to exactly ${n}.
+Produce a tight READINESS SCORECARD — renders as a dashboard, so keep every field short and grounded in the reactions above:
+- headline: ONE honest sentence — where this track really stands for a stranger audience.
+- readiness: 0–100, how ready it is to bet on / release (unfinished or mixed sits ~40–65; only a genuinely finished, compelling track clears 80).
+- dimensions: 4–6 craft areas RELEVANT to this track (choose from: Mixing, Vocals, Songwriting, Lyrics, Production, Hook, Arrangement, Originality). For each: name, score 0–100 (completeness/quality), and a note of AT MOST 12 words explaining the score, tied to what listeners felt.
 - bestMoment: the strongest moment — its second + a note of AT MOST 8 words.
-- dropOff: the weakest / most at-risk moment — its second + a note of AT MOST 8 words.
+- fixFirst: the SINGLE most important thing to fix before betting on this — one sentence, the thing their group chat would never tell them.
 - share: how many of the ${n} would actually share it, the single most likely sharer, and the platform.
-- listeners: exactly one entry per listener (${names}) — verdict (loved | mixed | passed) + a note of AT MOST 6 words.
 
-Ground every field in the reactions above. Be honest, not generous. Notes must be tiny.`;
+Be honest, not generous. Notes must be tiny.`;
 }

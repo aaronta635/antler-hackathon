@@ -4,14 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { formatTime } from "@/lib/format";
-import { listenerByName, type Room } from "@/lib/audience";
+import type { Room } from "@/lib/audience";
 import { summarySchema, type Summary } from "@/lib/summary";
-
-const VERDICT_COLOR: Record<string, string> = {
-  loved: "#34d399",
-  mixed: "#f59e0b",
-  passed: "#fb7185",
-};
 
 function scoreColor(score: number): string {
   if (score >= 75) return "#34d399";
@@ -208,87 +202,45 @@ function Dashboard({
   title: string;
   onReplay: () => void;
 }) {
-  const { loved, mixed, passed } = summary.sentiment;
-  const total = Math.max(1, loved + mixed + passed);
   const n = room.listeners.length;
 
   return (
     <div className="flex flex-col gap-5">
       <div className="text-center">
-        <p className="text-xs uppercase tracking-widest text-muted">Scorecard · {title}</p>
+        <p className="text-xs uppercase tracking-widest text-muted">Readiness scorecard · {title}</p>
         <p className="mt-2 text-lg font-medium leading-snug text-foreground">{summary.headline}</p>
       </div>
 
-      {/* Score + sentiment */}
-      <div className="grid grid-cols-3 gap-4 rounded-2xl border border-stone-800 bg-surface/60 p-5">
-        <div className="flex flex-col items-center justify-center border-r border-stone-800">
-          <span
-            className="text-5xl font-bold tabular-nums"
-            style={{ color: scoreColor(summary.score) }}
-          >
-            {Math.round(summary.score)}
+      {/* Readiness score + craft breakdown */}
+      <div className="flex flex-col gap-5 rounded-2xl border border-stone-800 bg-surface/60 p-5 sm:flex-row sm:items-center">
+        <div className="flex shrink-0 flex-col items-center justify-center sm:w-28 sm:border-r sm:border-stone-800 sm:pr-4">
+          <span className="text-5xl font-bold tabular-nums" style={{ color: scoreColor(summary.readiness) }}>
+            {Math.round(summary.readiness)}
           </span>
-          <span className="text-xs text-muted">/ 100 room score</span>
+          <span className="text-xs text-muted">/ 100 ready</span>
         </div>
-        <div className="col-span-2 flex flex-col justify-center gap-2">
-          <div className="flex h-3 overflow-hidden rounded-full bg-stone-800">
-            {(["loved", "mixed", "passed"] as const).map((k) => {
-              const v = summary.sentiment[k];
-              return (
-                <div
-                  key={k}
-                  style={{ width: `${(v / total) * 100}%`, backgroundColor: VERDICT_COLOR[k] }}
-                />
-              );
-            })}
-          </div>
-          <div className="flex justify-between text-xs">
-            <Legend color={VERDICT_COLOR.loved} label="loved" n={loved} />
-            <Legend color={VERDICT_COLOR.mixed} label="mixed" n={mixed} />
-            <Legend color={VERDICT_COLOR.passed} label="passed" n={passed} />
-          </div>
+        <div className="flex flex-1 flex-col gap-3">
+          {summary.dimensions.map((d) => (
+            <DimensionBar key={d.name} name={d.name} score={d.score} note={d.note} />
+          ))}
         </div>
       </div>
 
-      {/* Best / drop-off / share */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* The one thing to fix first — the truth the group chat won't tell them */}
+      <div className="rounded-2xl border border-rose-900/60 bg-rose-950/30 p-5">
+        <p className="text-xs font-medium uppercase tracking-wide text-rose-300">Fix this first</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-stone-200">{summary.fixFirst}</p>
+      </div>
+
+      {/* Best moment + market signal */}
+      <div className="grid grid-cols-2 gap-4">
         <Stat label="Best moment" value={formatTime(summary.bestMoment.time)} note={summary.bestMoment.note} accent="#34d399" />
-        <Stat label="Drop-off" value={formatTime(summary.dropOff.time)} note={summary.dropOff.note} accent="#fb7185" />
         <Stat
           label="Would share"
           value={`${summary.share.count}/${n}`}
           note={`${summary.share.persona} · ${summary.share.platform}`}
           accent="#f59e0b"
         />
-      </div>
-
-      {/* Per-listener verdicts */}
-      <div className="grid grid-cols-2 gap-2">
-        {summary.listeners.map((l) => {
-          const p = listenerByName(room, l.name);
-          return (
-            <div
-              key={l.name}
-              className="flex items-center gap-2 rounded-xl border border-stone-800 bg-surface/40 px-3 py-2"
-            >
-              <span
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-background"
-                style={{ backgroundColor: p?.color ?? "#78716c" }}
-              >
-                {p?.initials ?? l.name.slice(0, 2).toUpperCase()}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium text-foreground">{l.name}</span>
-                <span className="block truncate text-[11px] text-muted">{l.note}</span>
-              </span>
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: VERDICT_COLOR[l.verdict] }}
-                title={l.verdict}
-              />
-            </div>
-          );
-        })}
       </div>
 
       <button
@@ -302,12 +254,21 @@ function Dashboard({
   );
 }
 
-function Legend({ color, label, n }: { color: string; label: string; n: number }) {
+function DimensionBar({ name, score, note }: { name: string; score: number; note: string }) {
+  const color = scoreColor(score);
   return (
-    <span className="flex items-center gap-1.5 text-muted">
-      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-      {n} {label}
-    </span>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-sm font-medium text-foreground">{name}</span>
+        <span className="font-mono text-xs tabular-nums" style={{ color }}>
+          {Math.round(score)}
+        </span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-800">
+        <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: color }} />
+      </div>
+      <span className="text-[11px] leading-tight text-muted">{note}</span>
+    </div>
   );
 }
 
