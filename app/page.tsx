@@ -93,10 +93,12 @@ function Gate({ onDone }: { onDone: (name: string) => void }) {
       }
       localStorage.setItem("waitlist_done", "1");
       if (name.trim()) localStorage.setItem("waitlist_name", name.trim());
+      if (email.trim()) localStorage.setItem("waitlist_email", email.trim());
       onDone(name.trim());
     } catch {
       // Don't hard-block on a network hiccup — let them in anyway.
       localStorage.setItem("waitlist_done", "1");
+      if (email.trim()) localStorage.setItem("waitlist_email", email.trim());
       onDone(name.trim());
     } finally {
       setBusy(false);

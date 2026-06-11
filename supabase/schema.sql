@@ -70,6 +70,8 @@ create table if not exists public.feedback (
   session_id  uuid references public.sessions(id) on delete cascade,
   user_id     uuid references auth.users(id) on delete set null,
   created_at  timestamptz not null default now(),
+  name        text,          -- from the waitlist capture, so you know who said it
+  email       text,
   comment     text,          -- free-text comment
   feeling     text           -- a sentiment / emoji label (e.g. "loved", "meh")
 );

@@ -4,10 +4,40 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { formatTime } from "@/lib/format";
-import { listenerByName } from "@/lib/audience";
+import { listenerByName, KNOWLEDGE_TYPES, CRITICALITY, type Listener } from "@/lib/audience";
 
 // How long before a reaction's timestamp its author appears as "typing…".
 const TYPING_LEAD = 1.3; // seconds
+
+// An avatar that reveals the listener's stats on hover — so you remember who's who.
+function ListenerAvatar({ listener }: { listener: Listener }) {
+  const k = KNOWLEDGE_TYPES.find((x) => x.id === listener.knowledge);
+  const c = CRITICALITY.find((x) => x.id === listener.criticality);
+  return (
+    <div className="group/av relative">
+      <div
+        className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-background ring-2 ring-background"
+        style={{ backgroundColor: listener.color }}
+      >
+        {listener.initials}
+      </div>
+      <div className="pointer-events-none absolute left-1/2 top-10 z-30 hidden w-56 -translate-x-1/2 rounded-xl border border-stone-700 bg-stone-900 p-3 text-left shadow-xl group-hover/av:block">
+        <p className="text-sm font-medium text-foreground">
+          {listener.name}, {listener.age}
+          {listener.custom && <span className="ml-1 text-[10px] text-accent">yours</span>}
+        </p>
+        {listener.location && <p className="text-xs text-muted">{listener.location}</p>}
+        <p className="mt-2 text-xs text-stone-300">
+          {k?.label} · {c?.label} listener
+        </p>
+        <p className="text-xs text-muted">into {listener.genres.join(", ") || "all kinds"}</p>
+        {listener.dealbreaker && (
+          <p className="mt-1 text-xs text-muted">can&apos;t stand: {listener.dealbreaker}</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function SessionPage() {
   const router = useRouter();
@@ -240,11 +270,14 @@ export default function SessionPage() {
 
         {/* The room — reactions stream in at their timestamp */}
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-3 px-1">
             <span className="text-sm font-medium text-foreground">The room</span>
-            <span className="text-xs text-muted">
-              {shown.length} / {(reactions ?? []).length} reactions
-            </span>
+            {/* Who's listening — hover an avatar to see who they are */}
+            <div className="flex gap-1.5">
+              {(room?.listeners ?? []).map((l) => (
+                <ListenerAvatar key={l.id} listener={l} />
+              ))}
+            </div>
           </div>
 
           <div
@@ -262,6 +295,7 @@ export default function SessionPage() {
                   return (
                     <div key={i} className="animate-reaction-in flex items-start gap-3">
                       <div
+                        title={p ? `${p.name}, ${p.age} — ${KNOWLEDGE_TYPES.find((k) => k.id === p.knowledge)?.label}` : r.persona}
                         className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-background"
                         style={{ backgroundColor: p?.color ?? "#78716c" }}
                       >

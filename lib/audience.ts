@@ -147,7 +147,7 @@ export const DEFAULT_LISTENERS: Listener[] = [
     discovers: "Bandcamp deep-dives and the record store's staff picks",
     dealbreaker: "overproduction — everything loud, no dynamics, no air",
     guiltyPleasure: "smooth 70s yacht rock",
-    voice: "Writes like a measured r/indieheads top comment — full sentences, a reference or two, earns its praise.",
+    voice: "Chill old head who knows his stuff but keeps it casual — plain talk, maybe one quick comparison, never preachy or wordy.",
     platform: "a Reddit thread or a text to one friend — rarely shares, so it counts",
     initials: "HA",
     color: "#34d399",

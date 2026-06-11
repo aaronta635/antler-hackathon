@@ -119,7 +119,14 @@ function Feedback({ sessionId }: { sessionId: string }) {
       await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, feeling: feeling ?? undefined, comment: comment.trim() || undefined }),
+        body: JSON.stringify({
+          sessionId,
+          feeling: feeling ?? undefined,
+          comment: comment.trim() || undefined,
+          // Attach the waitlist identity so feedback isn't anonymous.
+          name: localStorage.getItem("waitlist_name") ?? undefined,
+          email: localStorage.getItem("waitlist_email") ?? undefined,
+        }),
       });
       setSent(true);
     } finally {

@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const bodySchema = z.object({
   sessionId: z.string().uuid(),
   comment: z.string().trim().max(2000).optional(),
   feeling: z.string().trim().max(40).optional(),
+  // From the waitlist capture so feedback isn't anonymous.
+  name: z.string().trim().max(120).optional(),
+  email: z.string().trim().max(200).optional(),
 });
 
 function supabaseConfigured(): boolean {
@@ -28,25 +30,17 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid feedback." }, { status: 400 });
   }
-  const { sessionId, comment, feeling } = parsed.data;
+  const { sessionId, comment, feeling, name, email } = parsed.data;
   if (!comment && !feeling) {
     return NextResponse.json({ error: "Say something first." }, { status: 400 });
-  }
-
-  let userId: string | null = null;
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    userId = data.user?.id ?? null;
-  } catch {
-    /* anonymous */
   }
 
   try {
     const admin = createAdminClient();
     const { error } = await admin.from("feedback").insert({
       session_id: sessionId,
-      user_id: userId,
+      name: name ?? null,
+      email: email ?? null,
       comment: comment ?? null,
       feeling: feeling ?? null,
     });
