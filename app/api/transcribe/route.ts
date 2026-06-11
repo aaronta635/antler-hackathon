@@ -25,7 +25,9 @@ export async function POST(req: Request) {
     const out = new FormData();
     out.append("file", file, file.name || "audio.mp3");
     out.append("model", "whisper-1");
-    out.append("response_format", "text");
+    // verbose_json gives timed segments — one phrase each — so we can put each
+    // line on its own row instead of one run-on block.
+    out.append("response_format", "verbose_json");
 
     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
@@ -38,8 +40,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ skipped: true });
     }
 
-    const lyrics = (await res.text()).trim();
-    return NextResponse.json({ lyrics });
+    const data = await res.json();
+    const segments: Array<{ text?: string }> = Array.isArray(data?.segments) ? data.segments : [];
+    // Whisper hallucinates boilerplate over silence (intros/outros). Drop it.
+    const HALLUCINATION = /^(thanks? (you )?for watching|please subscribe|like and subscribe|thank you\.?|subtitles? by.*|♪+)$/i;
+    const lines = (
+      segments.length
+        ? segments.map((s) => (s.text ?? "").trim())
+        : String(data?.text ?? "").split("\n")
+    )
+      .map((l) => l.trim())
+      .filter((l) => l && !HALLUCINATION.test(l));
+    return NextResponse.json({ lyrics: lines.join("\n") });
   } catch (err) {
     console.error("transcribe: failed", err);
     return NextResponse.json({ skipped: true });

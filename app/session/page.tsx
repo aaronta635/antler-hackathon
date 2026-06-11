@@ -364,7 +364,15 @@ function LyricsPanel({ lyrics }: { lyrics: string | null }) {
         ) : lyrics.trim().length === 0 ? (
           <span className="text-muted">No lyrics detected (instrumental, or transcription off).</span>
         ) : (
-          <p className="whitespace-pre-wrap">{lyrics}</p>
+          <div className="space-y-2.5">
+            {lyrics
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
+          </div>
         )}
       </div>
     </div>

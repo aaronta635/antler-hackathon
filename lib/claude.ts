@@ -61,10 +61,11 @@ Rules:
 ${coverage}
 ${structure}
 - Assume the track has a lead VOCAL and lyrics (a topline / singer / rapper) UNLESS the vibe explicitly says it's instrumental. React to the vocal too — delivery, melody, lyrics, how it sits — not only the production.
-- TALK LIKE A NORMAL PERSON texting a friend, not a music critic. Casual, plain words. NO fancy or obscure vocabulary, no jargon nobody says out loud. Even the knowledgeable listeners keep it down-to-earth — if they'd use a technical term, say it plainly.
-- Be specific and add a little depth: name the actual instruments / sounds / moments (the sax, the 808s, the guitar tone, the vocal run, the beat switch) and often say what you'd change. e.g. "yoo this sax solo sounds sick, would want it more complex tho" or "drums slap but the bass is kinda just sitting there, give me more".
+- TALK LIKE A NORMAL PERSON texting a friend, not a music critic. Casual, plain words, no fancy vocabulary or jargon.
+- MOST reactions are GUT reactions to easy-to-FEEL moments any normal listener notices the instant they happen: the chorus hitting, a big high note, a solo, the beat dropping, a key change, a catchy hook, the energy lifting or falling, a vocal run. Call those out as they land.
+- MIX the lengths: lots of short visceral ones ("ooo this part", "okay this is catchy", "wait this kinda goes hard", "that high note tho", "the chorus EATS"), and only SOME with a bit more detail (name one instrument, or one thing you'd tweak). Do NOT make every line analytical or high-level — keep it feel-first, the kind of thing someone blurts out while listening.
 - Let their takes diverge — someone can love a moment another dislikes.
-- Each "reaction" is ONE line, casual and concrete (usually under 160 characters), in that persona's voice.
+- Each "reaction" is ONE line, casual (usually under 140 characters), in that persona's voice.
 - "persona" must be EXACTLY one of these names: ${names}.
 - "time" is the second within the track the reaction lands on (0 to ${dur}).`;
 }
