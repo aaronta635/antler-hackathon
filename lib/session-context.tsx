@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Reaction, TrackMeta } from "./reactions";
+import type { Summary } from "./summary";
 
 /**
  * Holds everything that has to survive navigation between the router pages
@@ -25,6 +26,10 @@ type SessionState = {
   reactions: Reaction[] | null;
   /** Save the track info + generated timeline (called from /details on success). */
   setGenerated: (meta: TrackMeta, reactions: Reaction[]) => void;
+
+  // Cached end-of-song verdict so navigating back to /summary doesn't refetch.
+  summary: Summary | null;
+  setSummary: (summary: Summary) => void;
 };
 
 const SessionContext = createContext<SessionState | null>(null);
@@ -34,6 +39,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [meta, setMeta] = useState<TrackMeta | null>(null);
   const [reactions, setReactions] = useState<Reaction[] | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
 
   const loadTrack = useCallback((file: File) => {
     // Revoke the previous URL so we don't leak memory across loads.
@@ -42,19 +48,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return URL.createObjectURL(file);
     });
     setFileName(file.name);
-    // A new track invalidates any prior timeline.
+    // A new track invalidates any prior timeline + verdict.
     setMeta(null);
     setReactions(null);
+    setSummary(null);
   }, []);
 
   const setGenerated = useCallback((m: TrackMeta, r: Reaction[]) => {
     setMeta(m);
     setReactions(r);
+    setSummary(null); // a fresh timeline invalidates an old verdict
   }, []);
 
   const value = useMemo(
-    () => ({ fileUrl, fileName, loadTrack, meta, reactions, setGenerated }),
-    [fileUrl, fileName, loadTrack, meta, reactions, setGenerated],
+    () => ({
+      fileUrl,
+      fileName,
+      loadTrack,
+      meta,
+      reactions,
+      setGenerated,
+      summary,
+      setSummary,
+    }),
+    [fileUrl, fileName, loadTrack, meta, reactions, setGenerated, summary],
   );
 
   return (

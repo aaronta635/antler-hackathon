@@ -139,6 +139,7 @@ export default function SessionPage() {
           onEnded={() => {
             setIsPlaying(false);
             stopLoop();
+            router.push("/summary"); // the payoff (Phase 4)
           }}
           hidden
         />
@@ -190,7 +191,7 @@ export default function SessionPage() {
             </div>
           </div>
 
-          <div className="flex justify-center">
+          <div className="relative flex items-center justify-center">
             <button
               type="button"
               onClick={togglePlay}
@@ -207,6 +208,13 @@ export default function SessionPage() {
                   <path d="M8 5v14l11-7z" />
                 </svg>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/summary")}
+              className="absolute right-0 text-sm text-muted transition-colors hover:text-foreground"
+            >
+              Skip to verdict →
             </button>
           </div>
         </div>

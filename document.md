@@ -41,10 +41,11 @@ research behind product decisions. Companion to `decision.md` (the reasoning log
 - **Bonus:** server logs the full timeline to the terminal on generation.
 - **Verify (browser pending):** play → reactions stream in on time; compiles, routes 200, terminal log confirmed.
 
-### Phase 4 — End-of-song summary (only if 1–3 solid)
-- **4.1** `app/api/summary/route.ts` — second Claude call over full timeline.
-- **4.2** Summary screen: overall reaction, best moment, biggest risk/drop-off, who'd share it + why.
-- **Verify:** song ends → polished, insightful summary.
+### Phase 4 — End-of-song verdict + decision layer ✅
+- **4.1** `lib/summary.ts` (zod) + `app/api/summary/route.ts` — second Claude call over the full timeline; same retry-once/clear-error handling. ✅
+- **4.2** `/summary` screen: blunt verdict headline + decision layer — best moment, biggest drop-off risk (both with timestamps), and the share signal (who/where/clip, D9). ✅
+- **4.3** `/session` routes to `/summary` on song end, plus a "Skip to verdict →" affordance for demoing; summary cached in context. ✅
+- **Verify:** ✅ real verdict cites timestamps + quotes personas, names the drop-off window, gives an actionable share memo. HTTP 200.
 
 ---
 

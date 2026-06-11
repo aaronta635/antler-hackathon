@@ -1,6 +1,6 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { personasForPrompt } from "./personas";
-import type { TrackMeta } from "./reactions";
+import type { Reaction, TrackMeta } from "./reactions";
 
 // One place to swap the model (decision D14). Sonnet 4.6 chosen for the demo:
 // faster/cheaper for repeated runs, still excellent persona text. Swap to
@@ -45,3 +45,39 @@ Rules:
 }
 
 export { SYSTEM as REACTIONS_SYSTEM };
+
+// --- Phase 4: end-of-song verdict ------------------------------------------
+
+const SUMMARY_SYSTEM = `You are the producer in the room, reading the five listeners after a track finishes. Your job is a sharp, honest verdict an artist or their manager can act on — not a polite recap.
+
+THE FIVE LISTENERS:
+${personasForPrompt()}
+
+Voice: blunt, specific, opinionated. Reference the actual moments and what specific people said. Never hedge, never write generic praise. If the room was lukewarm, say so.`;
+
+/**
+ * Builds the verdict prompt from the full reaction timeline. Asks for a structured
+ * decision layer (best moment / drop-off risk / share signal) grounded in what was
+ * actually said. The route enforces the JSON shape via a schema.
+ */
+export function summaryPrompt(meta: TrackMeta, reactions: Reaction[]): string {
+  const timeline = reactions
+    .map((r) => `[${Math.round(r.time)}s] ${r.persona}: ${r.reaction}`)
+    .join("\n");
+
+  return `Track: "${meta.title}" — ${meta.genre} — ${Math.round(meta.duration)}s.
+Vibe the creator described: ${meta.vibe}
+
+Here is everything the room said, in order:
+${timeline}
+
+Write the verdict:
+- verdict: ONE blunt sentence capturing the room's overall take (the honest headline).
+- bestMoment: the single moment that landed hardest — the second it happens and why, citing what people said.
+- dropOff: the biggest risk — where listeners cooled off or would tune out — the second and why.
+- share: of the five, who is most likely to actually share this, on what platform, and the exact clip or reason they'd post it.
+
+Ground every field in the real reactions above. Use the listeners' names. Be specific about timestamps.`;
+}
+
+export { SUMMARY_SYSTEM };
