@@ -105,4 +105,13 @@ Companion to `document.md` (the step plan + strategy research).
 - **Decision:** `/api/reactions` validates the user's track metadata (400) *before* checking for
   `ANTHROPIC_API_KEY` (500). Input errors are the user's to fix regardless of server config.
 
+## D16 — Liveness polish: typing indicators + @replies (anti-"AI feel")
+- **Context:** User felt the feed read too generic/AI. Chose two of four proposed fixes.
+- **Typing indicators:** each reaction's author appears as an animated "typing…" bubble for
+  `TYPING_LEAD` (1.3s) before its timestamp, computed in the same rAF sync (feed-only, no API cost).
+- **@replies / pile-ons:** `replyTo` (nullable) added to the reaction schema; prompt asks for 4–6
+  reactions that answer another listener (time must come after the one they answer); route normalizes
+  replyTo to a valid *other* persona or null; feed shows "↳ replying to {name}".
+- **Deferred (offered, not chosen):** presence bar; messier/edgier voice prompt tuning.
+
 (See `document.md` PART B for the research behind these.)

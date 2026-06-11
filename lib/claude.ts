@@ -41,7 +41,8 @@ Rules:
 - Every listener should appear at least twice. Let their takes diverge — someone can love a moment another dislikes.
 - Each "reaction" is ONE short line (usually under 120 characters) in that persona's exact writing voice.
 - "persona" must be one of: Maya, DeShawn, Priya, Hank, Sofia.
-- "time" is the second within the track the reaction lands on.`;
+- "time" is the second within the track the reaction lands on.
+- THE ROOM IS SOCIAL: 4–6 of the reactions should reply to or pile onto what another listener JUST said a moment earlier — agreeing, pushing back, or dunking on them. For those, set "replyTo" to that person's name and have the line clearly respond to their take (it can name them, e.g. "nah Hank you're wrong"). The replying reaction's time must come a few seconds AFTER the one it answers. For every other reaction, "replyTo" must be null.`;
 }
 
 export { SYSTEM as REACTIONS_SYSTEM };

@@ -6,6 +6,9 @@ import { useSession } from "@/lib/session-context";
 import { formatTime } from "@/lib/format";
 import { personaByName } from "@/lib/personas";
 
+// How long before a reaction's timestamp its author appears as "typing…".
+const TYPING_LEAD = 1.3; // seconds
+
 export default function SessionPage() {
   const router = useRouter();
   const { fileUrl, fileName, reactions } = useSession();
@@ -19,6 +22,8 @@ export default function SessionPage() {
   const [duration, setDuration] = useState(0);
   // How many reactions (sorted by time) have been revealed so far.
   const [shownCount, setShownCount] = useState(0);
+  // Indices of reactions whose author is currently "typing" (in the lead window).
+  const [typingIdx, setTypingIdx] = useState<number[]>([]);
 
   // If someone lands here without a loaded track / timeline (e.g. refresh wiped
   // the in-memory context), send them back to start.
@@ -30,6 +35,7 @@ export default function SessionPage() {
   // always reads current values without being re-created.
   const reactionsRef = useRef(reactions ?? []);
   const shownCountRef = useRef(0);
+  const typingKeyRef = useRef(""); // last typing set, to avoid redundant setState
   useEffect(() => {
     reactionsRef.current = reactions ?? [];
   }, [reactions]);
@@ -45,6 +51,17 @@ export default function SessionPage() {
     if (count !== shownCountRef.current) {
       shownCountRef.current = count;
       setShownCount(count);
+    }
+
+    // "Typing": not-yet-revealed reactions whose author is within the lead window.
+    const typing: number[] = [];
+    for (let i = count; i < list.length && list[i].time - TYPING_LEAD <= t; i++) {
+      typing.push(i);
+    }
+    const key = typing.join(",");
+    if (key !== typingKeyRef.current) {
+      typingKeyRef.current = key;
+      setTypingIdx(typing);
     }
   }, []);
 
@@ -84,11 +101,11 @@ export default function SessionPage() {
 
   useEffect(() => () => stopLoop(), [stopLoop]);
 
-  // Auto-scroll the feed to the newest reaction as they stream in.
+  // Auto-scroll the feed to the newest reaction / typing bubble as they appear.
   useEffect(() => {
     const el = feedRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [shownCount]);
+  }, [shownCount, typingIdx]);
 
   // --- Play / pause ----------------------------------------------------------
   const togglePlay = useCallback(async () => {
@@ -125,7 +142,9 @@ export default function SessionPage() {
   );
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const shown = (reactions ?? []).slice(0, shownCount);
+  const all = reactions ?? [];
+  const shown = all.slice(0, shownCount);
+  const typing = typingIdx.map((i) => all[i]).filter(Boolean);
 
   if (!fileUrl) return null; // redirecting
 
@@ -232,33 +251,65 @@ export default function SessionPage() {
             ref={feedRef}
             className="flex h-72 flex-col gap-3 overflow-y-auto rounded-2xl border border-stone-800 bg-surface/40 p-4"
           >
-            {shown.length === 0 ? (
+            {shown.length === 0 && typing.length === 0 ? (
               <div className="flex flex-1 items-center justify-center text-center text-sm text-muted">
                 Hit play — the room is listening.
               </div>
             ) : (
-              shown.map((r, i) => {
-                const p = personaByName(r.persona);
-                return (
-                  <div key={i} className="animate-reaction-in flex items-start gap-3">
-                    <div
-                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-background"
-                      style={{ backgroundColor: p?.color ?? "#78716c" }}
-                    >
-                      {p?.initials ?? r.persona.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-foreground">{r.persona}</span>
-                        <span className="font-mono text-[11px] tabular-nums text-muted">
-                          {formatTime(r.time)}
-                        </span>
+              <>
+                {shown.map((r, i) => {
+                  const p = personaByName(r.persona);
+                  return (
+                    <div key={i} className="animate-reaction-in flex items-start gap-3">
+                      <div
+                        className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-background"
+                        style={{ backgroundColor: p?.color ?? "#78716c" }}
+                      >
+                        {p?.initials ?? r.persona.slice(0, 2).toUpperCase()}
                       </div>
-                      <p className="text-sm text-stone-300">{r.reaction}</p>
+                      <div className="min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm font-medium text-foreground">{r.persona}</span>
+                          <span className="font-mono text-[11px] tabular-nums text-muted">
+                            {formatTime(r.time)}
+                          </span>
+                        </div>
+                        {r.replyTo && (
+                          <p className="text-xs text-muted">↳ replying to {r.replyTo}</p>
+                        )}
+                        <p className="text-sm text-stone-300">{r.reaction}</p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+
+                {/* Typing indicators for whoever is about to speak */}
+                {typing.map((r) => {
+                  const p = personaByName(r.persona);
+                  return (
+                    <div
+                      key={`typing-${r.persona}-${r.time}`}
+                      className="flex items-center gap-3 opacity-80"
+                    >
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-background"
+                        style={{ backgroundColor: p?.color ?? "#78716c" }}
+                      >
+                        {p?.initials ?? r.persona.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex items-center gap-1 rounded-full bg-stone-800 px-3 py-2.5">
+                        {[0, 0.2, 0.4].map((d) => (
+                          <span
+                            key={d}
+                            className="typing-dot h-1.5 w-1.5 rounded-full bg-stone-400"
+                            style={{ animationDelay: `${d}s` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
             )}
           </div>
         </div>

@@ -42,3 +42,21 @@ body {
 .animate-reaction-in {
   animation: reaction-in 0.35s ease-out both;
 }
+
+/* Typing indicator: three dots that bounce in sequence. */
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.typing-dot {
+  animation: typing-dot 1.2s infinite ease-in-out;
+}

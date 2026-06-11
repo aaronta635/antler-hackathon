@@ -19,6 +19,9 @@ export const reactionSchema = z.object({
   time: z.number().min(0), // seconds into the track
   persona: z.string(), // must match a PERSONA name
   reaction: z.string().min(1), // the short, in-voice text
+  // If this is a reply / pile-on, the name of the persona being responded to.
+  // null for a standalone reaction. Makes the room feel social, not parallel.
+  replyTo: z.string().nullable(),
 });
 
 export type Reaction = z.infer<typeof reactionSchema>;

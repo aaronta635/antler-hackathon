@@ -36,6 +36,14 @@ function cleanReactions(reactions: Reaction[], duration: number): Reaction[] {
         PERSONA_NAMES.includes(r.persona) &&
         r.reaction.trim().length > 0,
     )
+    .map((r) => ({
+      ...r,
+      // Keep replyTo only if it names a different, known persona; otherwise null.
+      replyTo:
+        r.replyTo && r.replyTo !== r.persona && PERSONA_NAMES.includes(r.replyTo)
+          ? r.replyTo
+          : null,
+    }))
     .sort((a, b) => a.time - b.time);
 }
 
