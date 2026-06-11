@@ -22,7 +22,7 @@ import {
 
 export default function AudiencePage() {
   const router = useRouter();
-  const { fileUrl, meta, setRoom, setReactions } = useSession();
+  const { fileUrl, meta, lyrics, setRoom, setReactions } = useSession();
 
   // Default roster: all 5 selected to start.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -73,7 +73,7 @@ export default function AudiencePage() {
       const res = await fetch("/api/reactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ meta, room }),
+        body: JSON.stringify({ meta, room, lyrics: lyrics || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {

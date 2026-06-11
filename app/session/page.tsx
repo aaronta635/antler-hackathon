@@ -41,7 +41,7 @@ function ListenerAvatar({ listener }: { listener: Listener }) {
 
 export default function SessionPage() {
   const router = useRouter();
-  const { fileUrl, fileName, reactions, room } = useSession();
+  const { fileUrl, fileName, reactions, room, lyrics } = useSession();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -180,6 +180,7 @@ export default function SessionPage() {
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+      <div className="flex w-full max-w-5xl flex-col gap-6 lg:flex-row lg:items-start lg:justify-center">
       <div className="flex w-full max-w-xl flex-col gap-6">
         <audio
           ref={audioRef}
@@ -345,6 +346,27 @@ export default function SessionPage() {
           </div>
         </div>
       </div>
+
+        <LyricsPanel lyrics={lyrics} />
+      </div>
     </main>
+  );
+}
+
+// Static lyrics block (Whisper transcript) shown beside the room.
+function LyricsPanel({ lyrics }: { lyrics: string | null }) {
+  return (
+    <div className="flex w-full flex-col gap-3 lg:w-64 lg:shrink-0">
+      <span className="px-1 text-sm font-medium text-foreground">Lyrics</span>
+      <div className="h-72 overflow-y-auto rounded-2xl border border-stone-800 bg-surface/40 p-4 text-sm leading-relaxed text-stone-300 lg:h-114">
+        {lyrics === null ? (
+          <span className="text-muted">Transcribing the vocals…</span>
+        ) : lyrics.trim().length === 0 ? (
+          <span className="text-muted">No lyrics detected (instrumental, or transcription off).</span>
+        ) : (
+          <p className="whitespace-pre-wrap">{lyrics}</p>
+        )}
+      </div>
+    </div>
   );
 }

@@ -26,10 +26,15 @@ ${listenersPromptBlock(room.listeners)}
 ${toneInstruction(room.brutality)}`;
 }
 
-export function reactionsPrompt(meta: TrackMeta, room: Room): string {
+export function reactionsPrompt(meta: TrackMeta, room: Room, lyrics?: string): string {
   const names = room.listeners.map((l) => l.name).join(", ");
   const dur = Math.round(meta.duration);
   const short = dur < 90; // a clip / demo excerpt, not a full song
+
+  const lyricsBlock =
+    lyrics && lyrics.trim().length > 0
+      ? `\nTHE LYRICS (transcribed from the vocal):\n"""\n${lyrics.trim()}\n"""\n- React to the actual WORDS too: the writing, imagery, a line that hits or one that's corny/cliché. Quote or paraphrase a specific lyric when it matters.\n`
+      : "";
 
   const target = short
     ? Math.min(10, Math.max(4, Math.round(dur / 7)))
@@ -49,7 +54,7 @@ export function reactionsPrompt(meta: TrackMeta, room: Room): string {
 - Genre: ${meta.genre}
 - Vibe / description: ${meta.vibe}
 - Total duration: ${dur} seconds
-
+${lyricsBlock}
 Generate a timeline of about ${target} reactions, as if these people were listening together and reacting in the moment.
 
 Rules:

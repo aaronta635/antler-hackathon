@@ -11,7 +11,7 @@ function titleFromFile(name: string): string {
 
 export default function DetailsPage() {
   const router = useRouter();
-  const { fileUrl, fileName, setMeta } = useSession();
+  const { fileUrl, fileName, file, lyrics, setLyrics, setMeta } = useSession();
 
   const [title, setTitle] = useState(() => (fileName ? titleFromFile(fileName) : ""));
   const [genre, setGenre] = useState("");
@@ -33,6 +33,25 @@ export default function DetailsPage() {
       if (Number.isFinite(probe.duration)) setDuration(Math.round(probe.duration));
     });
   }, [fileUrl]);
+
+  // Kick off lyric transcription in the background (lands in context even after
+  // we navigate on). Empty string = "done, no lyrics" so we don't retry.
+  const transcribed = useRef(false);
+  useEffect(() => {
+    if (!file || lyrics !== null || transcribed.current) return;
+    transcribed.current = true;
+    (async () => {
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/transcribe", { method: "POST", body: form });
+        const data = await res.json();
+        setLyrics(typeof data?.lyrics === "string" ? data.lyrics : "");
+      } catch {
+        setLyrics("");
+      }
+    })();
+  }, [file, lyrics, setLyrics]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

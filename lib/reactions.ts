@@ -54,8 +54,9 @@ export const reactionsResponseSchema = z.object({
   reactions: z.array(reactionSchema).min(1),
 });
 
-// POST /api/reactions body: the track + the room that's listening.
+// POST /api/reactions body: the track + the room that's listening (+ optional lyrics).
 export const reactionsRequestSchema = z.object({
   meta: trackMetaSchema,
   room: roomSchema,
+  lyrics: z.string().max(20000).optional(),
 });

@@ -11,12 +11,12 @@ import type { Room } from "@/lib/audience";
 
 // Calls Claude once and returns validated reactions. generateObject forces the
 // model to match our schema and throws NoObjectGeneratedError on a bad response.
-async function generateReactions(meta: TrackMeta, room: Room): Promise<Reaction[]> {
+async function generateReactions(meta: TrackMeta, room: Room, lyrics?: string): Promise<Reaction[]> {
   const { object } = await generateObject({
     model: MODEL,
     schema: reactionsResponseSchema,
     system: reactionsSystem(room),
-    prompt: reactionsPrompt(meta, room),
+    prompt: reactionsPrompt(meta, room, lyrics),
     maxOutputTokens: 4000,
   });
   return object.reactions;
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { meta, room } = parsed.data;
+  const { meta, room, lyrics } = parsed.data;
 
   // 2. Need a key to reach Claude.
   if (!hasApiKey()) {
@@ -76,11 +76,11 @@ export async function POST(req: Request) {
   // 3. Generate — try once, retry once on a bad/unparseable response.
   let reactions: Reaction[];
   try {
-    reactions = await generateReactions(meta, room);
+    reactions = await generateReactions(meta, room, lyrics);
   } catch (firstError) {
     if (NoObjectGeneratedError.isInstance(firstError)) {
       try {
-        reactions = await generateReactions(meta, room);
+        reactions = await generateReactions(meta, room, lyrics);
       } catch {
         return NextResponse.json(
           { error: "The audience couldn't agree on a take. Try again in a moment." },

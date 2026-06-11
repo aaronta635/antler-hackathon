@@ -20,7 +20,11 @@ import type { Summary } from "./summary";
 type SessionState = {
   fileUrl: string | null;
   fileName: string | null;
+  file: File | null; // kept so we can send the audio for transcription
   loadTrack: (file: File) => void;
+
+  lyrics: string | null; // Whisper transcript (null until transcribed / if skipped)
+  setLyrics: (lyrics: string | null) => void;
 
   meta: TrackMeta | null;
   setMeta: (meta: TrackMeta) => void;
@@ -40,18 +44,22 @@ const SessionContext = createContext<SessionState | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [lyrics, setLyrics] = useState<string | null>(null);
   const [meta, setMeta] = useState<TrackMeta | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const [reactions, setReactions] = useState<Reaction[] | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
 
-  const loadTrack = useCallback((file: File) => {
+  const loadTrack = useCallback((f: File) => {
     setFileUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(file);
+      return URL.createObjectURL(f);
     });
-    setFileName(file.name);
+    setFileName(f.name);
+    setFile(f);
     // A new track invalidates everything downstream.
+    setLyrics(null);
     setMeta(null);
     setRoom(null);
     setReactions(null);
@@ -62,7 +70,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     () => ({
       fileUrl,
       fileName,
+      file,
       loadTrack,
+      lyrics,
+      setLyrics,
       meta,
       setMeta,
       room,
@@ -72,7 +83,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       summary,
       setSummary,
     }),
-    [fileUrl, fileName, loadTrack, meta, room, reactions, summary],
+    [fileUrl, fileName, file, loadTrack, lyrics, meta, room, reactions, summary],
   );
 
   return (
